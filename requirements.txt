@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+pydantic
+pymongo
+psycopg2-binary
+langchain
+langchain-community
+langchain-google-genai
+langchain-groq
+langchain-text-splitters
+langgraph
+pypdf
+faiss-cpu
