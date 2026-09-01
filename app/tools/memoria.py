@@ -1,26 +1,33 @@
-"""Ferramentas de memoria de longo prazo dos agentes."""
+"""Ferramenta de busca semantica na memoria de longo prazo."""
 
-from langchain.tools import tool
 from langchain_core.runnables import RunnableConfig
+from langchain_core.tools import tool
 
 from app.memory import recuperar_historico
 
 
 @tool
 def buscar_historico(busca: str, config: RunnableConfig) -> str:
-    """Busca algo que o usuario contou em conversas anteriores encerradas."""
-    configurable = config.get("configurable", {})
-    session_id = configurable.get("user_id") or configurable.get("thread_id")
-    if not session_id:
-        return "Nao foi possivel identificar o usuario."
+    """Consulta algo que o usuario contou em conversas anteriores encerradas."""
+    configuravel = (config or {}).get("configurable", {})
+    user_id = configuravel.get("user_id") or configuravel.get("thread_id")
+    if not user_id:
+        return "Nao foi possivel identificar o usuario para buscar o historico."
 
-    historico = recuperar_historico(session_id, busca=busca, limite=3)
+    historico = recuperar_historico(user_id, busca=busca, limite=3)
     if not historico:
         return "Nenhuma conversa anterior relevante encontrada."
-    return "\n\n".join(
-        f"[{item['iniciada_em']:%d/%m/%Y}] {item['resumo']}"
-        for item in historico
-    )
+
+    linhas = []
+    for item in historico:
+        data = item["iniciada_em"]
+        data_formatada = (
+            data.strftime("%d/%m/%Y")
+            if hasattr(data, "strftime")
+            else str(data)[:10]
+        )
+        linhas.append(f"[{data_formatada}] {item['resumo']}")
+    return "\n\n".join(linhas)
 
 
 TOOLS_MEMORIA = [buscar_historico]

@@ -132,7 +132,11 @@ grafo.add_edge("guardrail_saida", END)
 fluxo_agentes = grafo.compile(checkpointer=MemorySaver())
 
 
-def executar_fluxo_assessor(pergunta_usuario: str, session_id: str) -> tuple[str, list[str]]:
+def executar_fluxo_assessor(
+    pergunta_usuario: str,
+    session_id: str,
+    user_id: str = "usuario_teste",
+) -> tuple[str, list[str]]:
     estado_final = fluxo_agentes.invoke(
         {
             "messages": [{"role": "user", "content": pergunta_usuario}],
@@ -141,12 +145,12 @@ def executar_fluxo_assessor(pergunta_usuario: str, session_id: str) -> tuple[str
             "mapa_pii": {},
             "bloqueado": False,
         },
-        config={"configurable": {"thread_id": session_id}},
+        config={"configurable": {"thread_id": session_id, "user_id": user_id}},
     )
     resposta_final = _texto_mensagem(estado_final["messages"][-1])
 
-    iniciar_sessao(session_id)
-    salvar_mensagem(session_id, "usuario", pergunta_usuario)
-    salvar_mensagem(session_id, "assistente", resposta_final)
+    iniciar_sessao(session_id, user_id=user_id)
+    salvar_mensagem(session_id, "usuario", pergunta_usuario, user_id=user_id)
+    salvar_mensagem(session_id, "assistente", resposta_final, user_id=user_id)
 
     return resposta_final, estado_final.get("agentes_chamados", [])

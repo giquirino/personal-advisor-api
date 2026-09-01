@@ -22,6 +22,7 @@ const hint = document.getElementById("hint");
 // Sessão
 // ============================================================
 const SESSION_STORAGE_KEY = "assistente_session_id";
+const USER_STORAGE_KEY = "assistente_user_id";
 
 function gerarSessionId() {
   if (window.crypto && crypto.randomUUID) {
@@ -72,6 +73,11 @@ function exibirSessionId(id) {
 }
 
 let sessionId = obterOuCriarSessionId();
+let userId = localStorage.getItem(USER_STORAGE_KEY);
+if (!userId) {
+  userId = gerarSessionId();
+  localStorage.setItem(USER_STORAGE_KEY, userId);
+}
 exibirSessionId(sessionId);
 
 resetButton.addEventListener("click", iniciarNovaSessao);
@@ -195,6 +201,7 @@ composer.addEventListener("submit", async (evento) => {
       body: JSON.stringify({
         pergunta: pergunta,
         session_id: sessionId,
+        user_id: userId,
       }),
     });
 

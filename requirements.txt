@@ -11,4 +11,4 @@ langchain-groq
 langchain-text-splitters
 langgraph
 pypdf
-faiss-cpu
+qdrant-client

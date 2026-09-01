@@ -9,6 +9,6 @@ router = APIRouter(tags=["chat"])
 @router.post("/chat", response_model=ChatResponse)
 def conversar(requisicao: ChatRequest) -> ChatResponse:
     resposta, agentes = executar_fluxo_assessor(
-        requisicao.pergunta, requisicao.session_id
+        requisicao.pergunta, requisicao.session_id, requisicao.user_id
     )
     return ChatResponse(resposta=resposta, agentes_chamados=agentes)

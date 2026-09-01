@@ -10,7 +10,7 @@ The application uses a multi-agent workflow to route user requests to specialize
 - Financial transaction creation, search, balance calculation, and updates
 - Persistent calendar event creation, listing, updating, and cancellation
 - Long-term conversation memory stored in MongoDB
-- FAQ retrieval from a PDF using embeddings and FAISS
+- FAQ retrieval from a PDF using embeddings and Qdrant
 - Input and output guardrails for PII, prompt injection, and compliance
 - Gemini models with Groq fallback
 - Browser-based chat interface
@@ -34,7 +34,7 @@ Router agent
 Financial agent     Agenda agent        FAQ agent
   |                   |                   |
   v                   v                   v
-PostgreSQL          MongoDB             PDF + FAISS
+PostgreSQL          MongoDB             PDF + Qdrant
   |                   |
   +---------+---------+
             v
@@ -54,7 +54,7 @@ MongoDB is also used to store session messages, summaries, and long-term convers
 - Google Gemini and Groq
 - PostgreSQL
 - MongoDB
-- FAISS
+- Qdrant
 - HTML, CSS, and JavaScript
 
 ## Project Structure
@@ -129,6 +129,8 @@ GEMINI_API_KEY=your_gemini_api_key
 GROQ_API_KEY=your_groq_api_key
 DATABASE_URL=postgresql://user:password@localhost:5432/database
 MONGODB_URI=mongodb://localhost:27017
+QDRANT_URL=https://your-cluster.region.cloud.qdrant.io
+QDRANT_API_KEY=your_qdrant_api_key
 FAQ_PDF_PATH=data/FAQ_assessor_v1.1.pdf
 ```
 
@@ -138,6 +140,12 @@ Never commit the `.env` file or real credentials.
 
 ```bash
 python -m uvicorn app.main:app --reload
+```
+
+Index the FAQ once before the first FAQ query, or whenever the PDF changes:
+
+```bash
+python -m app.ingest_faq
 ```
 
 Open the following URLs:
