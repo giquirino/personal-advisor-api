@@ -1,4 +1,4 @@
-"""Busca semantica do FAQ previamente indexado no Qdrant."""
+"""Busca semântica do FAQ previamente indexado no Qdrant."""
 
 from langchain.tools import tool
 

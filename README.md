@@ -1,15 +1,29 @@
-# AI Financial Assistant API
+<div align="center">
+
+# Personal Advisor API
+
+### Artificial Intelligence Academic Project
+
+**Developed by Giovanna Quirino**<br>
+**Artificial Intelligence Course — 2026**
+
+Academic advisor: **Professor Marcelo Bezerra Grilo Junior**<br>
+**School of Technology — Instituto J&F**
+
+</div>
+
+---
 
 An AI-powered personal assistant for financial management and scheduling, built with FastAPI, LangChain, and LangGraph.
 
-The application uses a multi-agent workflow to route user requests to specialized financial, agenda, and FAQ agents. It also keeps conversation summaries in MongoDB, allowing the assistant to retrieve relevant information from previous sessions.
+The application uses a multi-agent workflow to route user requests to specialized financial, agenda, and FAQ agents. Conversation data is persisted in MongoDB, while summaries are indexed in Qdrant for semantic retrieval across sessions.
 
 ## Features
 
 - Multi-agent orchestration with LangGraph
 - Financial transaction creation, search, balance calculation, and updates
 - Persistent calendar event creation, listing, updating, and cancellation
-- Long-term conversation memory stored in MongoDB
+- Long-term conversation memory persisted in MongoDB and indexed in Qdrant
 - FAQ retrieval from a PDF using embeddings and Qdrant
 - Input and output guardrails for PII, prompt injection, and compliance
 - Gemini models with Groq fallback
@@ -19,32 +33,26 @@ The application uses a multi-agent workflow to route user requests to specialize
 ## Architecture
 
 ```text
-User
-  |
-  v
-FastAPI /chat
-  |
-  v
-Input guardrail
-  |
-  v
-Router agent
-  |-------------------|-------------------|
-  v                   v                   v
-Financial agent     Agenda agent        FAQ agent
-  |                   |                   |
-  v                   v                   v
-PostgreSQL          MongoDB             PDF + Qdrant
-  |                   |
-  +---------+---------+
-            v
-     Orchestrator agent
-            |
-            v
-      Output guardrail
+User -> FastAPI /chat -> Input guardrail -> Router agent
+                                           |       |       |
+                                           v       v       v
+                                      Financial  Agenda   FAQ
+                                           |       |       |
+                                           v       v       v
+                                      PostgreSQL MongoDB  Qdrant
+                                           |       |
+                                           +---+---+
+                                               v
+                                      Orchestrator agent
+                                               |
+                                               v
+                                        Output guardrail
+
+Long-term memory: MongoDB sessions -> summaries -> Qdrant semantic index
+FAQ knowledge: PDF -> one-time ingestion -> Qdrant semantic index
 ```
 
-MongoDB is also used to store session messages, summaries, and long-term conversation history.
+MongoDB stores session messages, summaries, calendar events, and conversation metadata. Qdrant provides semantic retrieval for both conversation summaries and FAQ chunks.
 
 ## Technology Stack
 
@@ -94,8 +102,8 @@ MongoDB is also used to store session messages, summaries, and long-term convers
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/YOUR-USERNAME/ai-financial-assistant-api.git
-cd ai-financial-assistant-api
+git clone https://github.com/giquirino/personal-advisor-api.git
+cd personal-advisor-api
 ```
 
 ### 2. Create a virtual environment
@@ -208,7 +216,7 @@ Messages are stored during an active session. When the session is closed, the as
 
 The router, financial agent, and agenda agent can search summaries from previous closed sessions when the current request depends on information the user mentioned earlier. The FAQ agent does not access personal conversation memory.
 
-Current history retrieval uses a case-insensitive literal text search. Semantic memory retrieval is a possible future improvement.
+Conversation summaries are indexed in Qdrant and retrieved through semantic similarity, allowing related concepts and synonyms to find relevant memories even when the wording differs.
 
 ## Security Notes
 
@@ -221,7 +229,3 @@ Current history retrieval uses a case-insensitive literal text search. Semantic 
 ## Development Status
 
 The project currently supports the full FastAPI workflow, persistent sessions, financial tools, calendar tools, FAQ retrieval, and long-term memory. External services must be configured and available for end-to-end operation.
-
-## License
-
-This project does not currently include a license.

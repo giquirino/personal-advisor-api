@@ -1,4 +1,4 @@
-"""Rotas de ciclo de vida das sessoes."""
+"""Rotas de ciclo de vida das sessões."""
 
 from fastapi import APIRouter
 

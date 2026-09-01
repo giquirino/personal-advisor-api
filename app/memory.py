@@ -1,4 +1,4 @@
-"""Persistencia de sessoes no MongoDB e indice semantico no Qdrant."""
+"""Persistência de sessões no MongoDB e índice semântico no Qdrant."""
 
 import uuid
 from datetime import datetime, timezone
@@ -24,13 +24,13 @@ col_sessoes.create_index("user_id")
 col_sessoes.create_index("iniciada_em")
 
 _PROMPT_RESUMO = """\
-Voce e um assistente que resume conversas de assessoria financeira e agenda.
+Você é um assistente que resume conversas de assessoria financeira e agenda.
 Gere um resumo conciso em 2-4 frases capturando:
-- O que o usuario fez (transacoes registradas, eventos agendados)
-- O que o usuario perguntou
-- Informacoes relevantes mencionadas (valores, datas, categorias)
+- O que o usuário fez (transações registradas, eventos agendados)
+- O que o usuário perguntou
+- Informações relevantes mencionadas (valores, datas, categorias)
 
-Responda APENAS com o resumo, sem introducao ou explicacao.
+Responda APENAS com o resumo, sem introdução ou explicação.
 
 Conversa:
 {conversa}
@@ -72,7 +72,7 @@ def _doc_id_da_sessao(session_id: str) -> str | None:
 
 
 def iniciar_sessao(session_id: str, user_id: str = "usuario_teste") -> None:
-    """Cria uma sessao vinculada ao identificador estavel do usuario."""
+    """Cria uma sessão vinculada ao identificador estável do usuário."""
     if _doc_id_da_sessao(session_id):
         return
     doc_id = str(uuid.uuid4())
@@ -95,7 +95,7 @@ def salvar_mensagem(
     content: str,
     user_id: str = "usuario_teste",
 ) -> None:
-    """Acrescenta uma mensagem a sessao aberta."""
+    """Acrescenta uma mensagem à sessão aberta."""
     iniciar_sessao(session_id, user_id=user_id)
     doc_id = _doc_id_da_sessao(session_id)
     col_sessoes.update_one(
@@ -108,7 +108,7 @@ def salvar_mensagem(
 
 
 def encerrar_sessao(session_id: str) -> str | None:
-    """Resume a sessao, persiste o resumo e o indexa semanticamente."""
+    """Resume a sessão, persiste o resumo e o indexa semanticamente."""
     doc_id = _doc_id_da_sessao(session_id)
     if not doc_id:
         return None

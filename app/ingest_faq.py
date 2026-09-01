@@ -23,7 +23,7 @@ def ingerir_faq() -> int:
     """Indexa os chunks de forma idempotente, sem apagar pontos existentes."""
     print(f"[ingest] Carregando PDF: {FAQ_PDF_PATH}")
     docs = PyPDFLoader(str(FAQ_PDF_PATH)).load()
-    print(f"[ingest] {len(docs)} pagina(s) carregada(s)")
+    print(f"[ingest] {len(docs)} página(s) carregada(s)")
     chunks = RecursiveCharacterTextSplitter(
         chunk_size=CHUNK_SIZE,
         chunk_overlap=CHUNK_OVERLAP,

@@ -1,4 +1,4 @@
-"""Ferramenta de busca semantica na memoria de longo prazo."""
+"""Ferramenta de busca semântica na memória de longo prazo."""
 
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
@@ -8,11 +8,11 @@ from app.memory import recuperar_historico
 
 @tool
 def buscar_historico(busca: str, config: RunnableConfig) -> str:
-    """Consulta algo que o usuario contou em conversas anteriores encerradas."""
+    """Consulta algo que o usuário contou em conversas anteriores encerradas."""
     configuravel = (config or {}).get("configurable", {})
     user_id = configuravel.get("user_id") or configuravel.get("thread_id")
     if not user_id:
-        return "Nao foi possivel identificar o usuario para buscar o historico."
+        return "Não foi possível identificar o usuário para buscar o histórico."
 
     historico = recuperar_historico(user_id, busca=busca, limite=3)
     if not historico:

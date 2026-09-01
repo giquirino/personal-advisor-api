@@ -1,4 +1,4 @@
-"""Cliente Qdrant e geracao centralizada de embeddings."""
+"""Cliente Qdrant e geração centralizada de embeddings."""
 
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from qdrant_client import QdrantClient, models
@@ -19,7 +19,7 @@ _collections_prontas = False
 
 
 def garantir_collections() -> None:
-    """Cria as collections e o indice de user_id quando ainda nao existem."""
+    """Cria as collections e o índice de `user_id` quando ainda não existem."""
     global _collections_prontas
     if _collections_prontas:
         return
@@ -44,7 +44,7 @@ def garantir_collections() -> None:
 
 
 def gerar_embedding(texto: str) -> list[float]:
-    """Gera um vetor de 768 dimensoes para um texto."""
+    """Gera um vetor de 768 dimensões para um texto."""
     return _embeddings.embed_query(texto, output_dimensionality=EMBEDDING_DIM)
 
 

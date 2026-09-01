@@ -22,7 +22,7 @@ def _user_id(config: RunnableConfig) -> str | None:
 class CriarEventoArgs(BaseModel):
     titulo: str = Field(..., min_length=1)
     inicio: str = Field(..., description="Data e hora ISO 8601, por exemplo 2026-09-01T14:00:00-03:00.")
-    fim: str = Field(..., description="Data e hora ISO 8601 posterior ao inicio.")
+    fim: str = Field(..., description="Data e hora ISO 8601 posterior ao início.")
     local: Optional[str] = None
     participantes: list[str] = Field(default_factory=list)
     lembrete: Optional[str] = None
@@ -38,12 +38,12 @@ def criar_evento(
     participantes: list[str] | None = None,
     lembrete: str | None = None,
 ) -> dict:
-    """Cria um compromisso depois que os dados necessarios foram confirmados."""
+    """Cria um compromisso depois que os dados necessários foram confirmados."""
     user_id = _user_id(config)
     if not user_id:
-        return {"status": "error", "message": "Usuario nao identificado."}
+        return {"status": "error", "message": "Usuário não identificado."}
     if fim <= inicio:
-        return {"status": "error", "message": "O fim deve ser posterior ao inicio."}
+        return {"status": "error", "message": "O fim deve ser posterior ao início."}
 
     conflito = col_eventos.find_one({
         "user_id": user_id,
@@ -54,7 +54,7 @@ def criar_evento(
     if conflito:
         return {
             "status": "conflict",
-            "message": "Existe um compromisso nesse horario.",
+            "message": "Existe um compromisso nesse horário.",
             "evento": conflito,
         }
 
@@ -90,7 +90,7 @@ def listar_eventos(
     """Lista compromissos ativos, podendo filtrar por uma janela de tempo."""
     user_id = _user_id(config)
     if not user_id:
-        return {"status": "error", "message": "Usuario nao identificado."}
+        return {"status": "error", "message": "Usuário não identificado."}
     filtro: dict = {"user_id": user_id, "status": "ativo"}
     if de or ate:
         filtro["inicio"] = {}
@@ -132,15 +132,15 @@ def atualizar_evento(
         if valor is not None
     }
     if not user_id:
-        return {"status": "error", "message": "Usuario nao identificado."}
+        return {"status": "error", "message": "Usuário não identificado."}
     if not alteracoes:
-        return {"status": "error", "message": "Nenhuma alteracao informada."}
+        return {"status": "error", "message": "Nenhuma alteração informada."}
     resultado = col_eventos.update_one(
         {"_id": evento_id, "user_id": user_id, "status": "ativo"},
         {"$set": alteracoes},
     )
     if not resultado.matched_count:
-        return {"status": "error", "message": "Evento nao encontrado."}
+        return {"status": "error", "message": "Evento não encontrado."}
     return {"status": "ok", "evento": col_eventos.find_one({"_id": evento_id})}
 
 
@@ -150,16 +150,16 @@ class CancelarEventoArgs(BaseModel):
 
 @tool("cancelar_evento", args_schema=CancelarEventoArgs)
 def cancelar_evento(evento_id: str, config: RunnableConfig) -> dict:
-    """Cancela um compromisso que o usuario confirmou que deseja cancelar."""
+    """Cancela um compromisso que o usuário confirmou que deseja cancelar."""
     user_id = _user_id(config)
     if not user_id:
-        return {"status": "error", "message": "Usuario nao identificado."}
+        return {"status": "error", "message": "Usuário não identificado."}
     resultado = col_eventos.update_one(
         {"_id": evento_id, "user_id": user_id, "status": "ativo"},
         {"$set": {"status": "cancelado", "cancelado_em": datetime.now(timezone.utc)}},
     )
     if not resultado.matched_count:
-        return {"status": "error", "message": "Evento nao encontrado."}
+        return {"status": "error", "message": "Evento não encontrado."}
     return {"status": "ok", "evento_id": evento_id}
 
 
