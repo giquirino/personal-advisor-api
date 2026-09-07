@@ -124,6 +124,23 @@ def salvar_mensagem(
     )
 
 
+def salvar_mensagens(
+    session_id: str,
+    mensagens: list[dict[str, str]],
+    user_id: str = "usuario_teste",
+) -> None:
+    """Persiste várias mensagens em uma única atualização no MongoDB."""
+    iniciar_sessao(session_id, user_id=user_id)
+    doc_id = _doc_id_da_sessao(session_id)
+    _get_col_sessoes().update_one(
+        {"_id": doc_id},
+        {
+            "$push": {"mensagens": {"$each": mensagens}},
+            "$set": {"atualizada_em": _agora(), "user_id": user_id},
+        },
+    )
+
+
 def encerrar_sessao(session_id: str) -> str | None:
     """Resume a sessão, persiste o resumo e o indexa semanticamente."""
     doc_id = _doc_id_da_sessao(session_id)

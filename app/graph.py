@@ -6,12 +6,11 @@ from typing import Annotated
 
 from langchain.agents import create_agent
 from langchain_core.messages import AIMessage
-from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, MessagesState, StateGraph
 
 from app.guardrail import anonimizar_entrada, guardrail_entrada, guardrail_saida
 from app.llms import llm, llm_rapido
-from app.memory import iniciar_sessao, salvar_mensagem
+from app.memory import salvar_mensagens
 from app.prompts import (
     AGENDA_PROMPT_COMPLETO,
     FAQ_PROMPT_COMPLETO,
@@ -25,7 +24,11 @@ from app.tools.memoria import TOOLS_MEMORIA
 
 router_agent = create_agent(model=llm_rapido, system_prompt=ROUTER_PROMPT_COMPLETO, tools=TOOLS_MEMORIA)
 financeiro_agent = create_agent(
-    model=llm, system_prompt=FINANCEIRO_PROMPT_COMPLETO, tools=TOOLS + TOOLS_MEMORIA
+    # O agente executa chamadas de ferramenta; usar o modelo rápido reduz a
+    # latência de cada turno sem alterar o contrato JSON ou as operações.
+    model=llm_rapido,
+    system_prompt=FINANCEIRO_PROMPT_COMPLETO,
+    tools=TOOLS + TOOLS_MEMORIA,
 )
 agenda_agent = create_agent(
     model=llm, system_prompt=AGENDA_PROMPT_COMPLETO, tools=TOOLS_AGENDA + TOOLS_MEMORIA
@@ -171,7 +174,10 @@ grafo.add_edge("faq", "guardrail_saida")
 grafo.add_edge("orquestrador", "guardrail_saida")
 grafo.add_edge("guardrail_saida", END)
 
-fluxo_agentes = grafo.compile(checkpointer=MemorySaver())
+# O histórico das sessões já é persistido no MongoDB. Manter checkpoints de
+# execução aqui fazia cada nova mensagem reenviar todas as mensagens internas
+# dos agentes aos modelos, aumentando a latência a cada turno.
+fluxo_agentes = grafo.compile()
 
 
 def executar_fluxo_assessor(
@@ -187,12 +193,17 @@ def executar_fluxo_assessor(
             "mapa_pii": {},
             "bloqueado": False,
         },
-        config={"configurable": {"thread_id": session_id, "user_id": user_id}},
+        config={"configurable": {"user_id": user_id}},
     )
     resposta_final = _texto_mensagem(estado_final["messages"][-1])
 
-    iniciar_sessao(session_id, user_id=user_id)
-    salvar_mensagem(session_id, "usuario", pergunta_usuario, user_id=user_id)
-    salvar_mensagem(session_id, "assistente", resposta_final, user_id=user_id)
+    salvar_mensagens(
+        session_id,
+        [
+            {"role": "usuario", "content": pergunta_usuario},
+            {"role": "assistente", "content": resposta_final},
+        ],
+        user_id=user_id,
+    )
 
     return resposta_final, estado_final.get("agentes_chamados", [])

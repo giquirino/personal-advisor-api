@@ -155,6 +155,12 @@ Resposta para revisar:
 {resposta}
 """
 
+_TERMOS_DE_COMPLIANCE = re.compile(
+    r"\b(aç(?:ão|ões)|ativo|investimento|investir|comprar|vender|"
+    r"rentabilidade|retorno garantido|mercado|cdb|cripto|bitcoin)\b",
+    re.IGNORECASE,
+)
+
 def guardrail_saida(resposta, mapa_pii, restaurar_pii=False):
     """
     Limpa e revisa a resposta do especialista antes de entregar ao usuário.
@@ -167,7 +173,11 @@ def guardrail_saida(resposta, mapa_pii, restaurar_pii=False):
     # 2. Resolve tokens de PII da entrada
     resposta = desanonimizar_saida(resposta, mapa_pii, restaurar=restaurar_pii)
 
-    # 3. Revisão de compliance financeiro
+    # 3. Revisão de compliance financeiro. Respostas operacionais comuns,
+    # como registrar uma despesa, não exigem outra chamada ao modelo.
+    if not _TERMOS_DE_COMPLIANCE.search(resposta):
+        return _saida_ok(resposta)
+
     saida = llm.invoke(_PROMPT_COMPLIANCE.format(resposta=resposta)).content.strip()
     if "RESPOSTA:" in saida:
         resposta = saida.split("RESPOSTA:", 1)[1].strip() or resposta

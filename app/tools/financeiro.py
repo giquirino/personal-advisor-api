@@ -1,3 +1,5 @@
+import re
+
 from langchain.tools import tool
 from typing import List, Optional
 from pydantic import BaseModel, Field
@@ -236,7 +238,10 @@ def add_transaction(
 
 class QueryTransactionsArgs(BaseModel):
     limit: int = Field(default=10, description="Número máximo de transações a retornar.")
-    date: Optional[str] = Field(default=None, description="Filtrar por data no formato YYYY-MM-DD.")
+    date: Optional[str] = Field(
+        default=None,
+        description="Filtrar por dia (YYYY-MM-DD) ou por mês (YYYY-MM).",
+    )
     type_filter: Optional[str] = Field(default=None, description="Filtrar por tipo: INCOME | EXPENSES | TRANSFER.")
  
 # Tool: query_transactions -> Busca as últimas transações
@@ -247,6 +252,22 @@ def query_transactions(
     type_filter: Optional[str] = None,
 ) -> dict:
     """Lista as transações mais recentes do banco de dados, com filtros opcionais por data e tipo."""
+    filtro_data = "TRUE"
+    parametros_data: list[str] = []
+    if date:
+        date = date.strip()
+        if re.fullmatch(r"\d{4}-\d{2}", date):
+            filtro_data = "DATE_TRUNC('month', t.occurred_at AT TIME ZONE 'America/Sao_Paulo') = %s::date"
+            parametros_data.append(f"{date}-01")
+        elif re.fullmatch(r"\d{4}-\d{2}-\d{2}", date):
+            filtro_data = "(t.occurred_at AT TIME ZONE 'America/Sao_Paulo')::date = %s::date"
+            parametros_data.append(date)
+        else:
+            return {
+                "status": "error",
+                "message": "Data inválida. Use YYYY-MM ou YYYY-MM-DD.",
+            }
+
     conn = get_conn()
     cur = conn.cursor()
  
@@ -254,16 +275,16 @@ def query_transactions(
         if type_filter:
             type_filter = TYPE_ALIASES.get(type_filter.strip().upper(), type_filter.strip().upper())
  
-        cur.execute("""
+        cur.execute(f"""
             SELECT t.amount, tt.type, c.name, t.description, t.occurred_at
             FROM transactions t
             LEFT JOIN transaction_types tt ON tt.id = t.type
             LEFT JOIN categories c ON c.id = t.category_id
-            WHERE (%s IS NULL OR DATE(t.occurred_at) = %s::date)
+            WHERE {filtro_data}
               AND (%s IS NULL OR UPPER(tt.type) = %s)
             ORDER BY t.occurred_at DESC
             LIMIT %s;
-        """, (date, date, type_filter, type_filter, limit))
+        """, (*parametros_data, type_filter, type_filter, limit))
  
         rows = cur.fetchall()
  
