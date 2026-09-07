@@ -1,5 +1,6 @@
 """Fluxo LangGraph do Acessor.AI."""
 
+import json
 import operator
 from typing import Annotated
 
@@ -15,7 +16,6 @@ from app.prompts import (
     AGENDA_PROMPT_COMPLETO,
     FAQ_PROMPT_COMPLETO,
     FINANCEIRO_PROMPT_COMPLETO,
-    ORQUESTRADOR_PROMPT_COMPLETO,
     ROUTER_PROMPT_COMPLETO,
 )
 from app.tools.financeiro import TOOLS
@@ -29,9 +29,6 @@ financeiro_agent = create_agent(
 )
 agenda_agent = create_agent(
     model=llm, system_prompt=AGENDA_PROMPT_COMPLETO, tools=TOOLS_AGENDA + TOOLS_MEMORIA
-)
-orquestrador_agent = create_agent(
-    model=llm_rapido, system_prompt=ORQUESTRADOR_PROMPT_COMPLETO
 )
 # O retriever do FAQ ainda depende de indexação externa; o agente permanece
 # disponível para responder pelas instruções de sistema enquanto ela não ocorre.
@@ -50,6 +47,45 @@ class Estado(MessagesState):
 def _texto_mensagem(mensagem: object) -> str:
     conteudo = getattr(mensagem, "content", mensagem)
     return conteudo if isinstance(conteudo, str) else str(conteudo)
+
+
+def _extrair_json_do_especialista(texto: str) -> dict | None:
+    """Extrai o primeiro objeto JSON, mesmo se o modelo usar Markdown."""
+    texto = texto.strip()
+    if texto.startswith("```"):
+        texto = texto.split("\n", 1)[1] if "\n" in texto else ""
+        if texto.rstrip().endswith("```"):
+            texto = texto.rstrip()[:-3].rstrip()
+
+    decoder = json.JSONDecoder()
+    for inicio, caractere in enumerate(texto):
+        if caractere != "{":
+            continue
+        try:
+            conteudo, _ = decoder.raw_decode(texto[inicio:])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(conteudo, dict):
+            return conteudo
+    return None
+
+
+def _formatar_resposta_especialista(texto: str) -> str:
+    """Converte o protocolo interno do especialista em texto para a interface."""
+    resultado = _extrair_json_do_especialista(texto)
+    if not resultado or not isinstance(resultado.get("resposta"), str):
+        return "Não foi possível interpretar a resposta do especialista. Tente novamente."
+
+    partes = [resultado["resposta"].strip()]
+    recomendacao = resultado.get("recomendacao")
+    if isinstance(recomendacao, str) and recomendacao.strip():
+        partes.append(f"Recomendação: {recomendacao.strip()}")
+
+    acompanhamento = resultado.get("esclarecer") or resultado.get("acompanhamento")
+    if isinstance(acompanhamento, str) and acompanhamento.strip():
+        partes.append(f"Acompanhamento: {acompanhamento.strip()}")
+
+    return "\n\n".join(partes)
 
 
 def no_guardrail_entrada(estado: Estado) -> dict:
@@ -97,8 +133,14 @@ def no_faq(estado: Estado, config) -> dict:
 
 
 def no_orquestrador(estado: Estado) -> dict:
-    saida = orquestrador_agent.invoke({"messages": list(estado["messages"])})
-    return {"agentes_chamados": ["orquestrador"], "messages": [saida["messages"][-1]]}
+    # Financeiro e agenda produzem JSON interno. A montagem é determinística
+    # para impedir que esse protocolo seja exposto ao usuário.
+    texto_especialista = _texto_mensagem(estado["messages"][-1])
+    resposta = _formatar_resposta_especialista(texto_especialista)
+    return {
+        "agentes_chamados": ["orquestrador"],
+        "messages": [AIMessage(content=resposta)],
+    }
 
 
 def no_guardrail_saida(estado: Estado) -> dict:
