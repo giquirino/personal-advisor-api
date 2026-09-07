@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 class ChatRequest(BaseModel):
@@ -21,3 +23,17 @@ class SessionResponse(BaseModel):
     """Ainda não é usado — é do Passo 6 da Etapa 3."""
     session_id: str
     resumo:     str | None = None
+
+
+class HealthCheck(BaseModel):
+    """Resultado de uma dependência ou requisito da aplicação."""
+
+    status: Literal["ok", "not_configured", "unavailable"]
+    message: str
+
+
+class HealthResponse(BaseModel):
+    """Contrato do endpoint GET /health."""
+
+    status: Literal["ok", "degraded"]
+    checks: dict[str, HealthCheck]

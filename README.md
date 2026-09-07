@@ -210,6 +210,25 @@ Calling this endpoint again for an already closed session returns `null` as the 
 GET /health
 ```
 
+The endpoint validates both required configuration and connectivity to MongoDB,
+PostgreSQL, and Qdrant. Its response follows this contract:
+
+```json
+{
+  "status": "ok | degraded",
+  "checks": {
+    "mongodb": {
+      "status": "ok | not_configured | unavailable",
+      "message": "Human-readable diagnostic without credentials."
+    }
+  }
+}
+```
+
+`not_configured` means a required `.env` variable is missing; `unavailable`
+means the value exists but the service could not be reached. API keys are only
+checked for presence, so this endpoint does not spend model API quota.
+
 ## Long-Term Memory
 
 Messages are stored during an active session. When the session is closed, the assistant generates a concise summary and saves it in MongoDB.

@@ -15,13 +15,30 @@ from app.vectorstore import (
     qdrant,
 )
 
-_mongo = MongoClient(MONGODB_URI)
-db = _mongo["assessor"]
-col_sessoes = db["sessoes"]
+_mongo: MongoClient | None = None
+_indices_criados = False
 
-col_sessoes.create_index("session_id")
-col_sessoes.create_index("user_id")
-col_sessoes.create_index("iniciada_em")
+
+def get_db():
+    """Obtém o banco somente quando uma operação realmente precisa dele."""
+    global _mongo
+    if not MONGODB_URI:
+        raise RuntimeError("MONGODB_URI não está configurada. Consulte GET /health.")
+    if _mongo is None:
+        _mongo = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5_000)
+    return _mongo["assessor"]
+
+
+def _get_col_sessoes():
+    """Garante os índices após a primeira conexão bem-sucedida ao MongoDB."""
+    global _indices_criados
+    col_sessoes = get_db()["sessoes"]
+    if not _indices_criados:
+        col_sessoes.create_index("session_id")
+        col_sessoes.create_index("user_id")
+        col_sessoes.create_index("iniciada_em")
+        _indices_criados = True
+    return col_sessoes
 
 _PROMPT_RESUMO = """\
 Você é um assistente que resume conversas de assessoria financeira e agenda.
@@ -60,7 +77,7 @@ def _doc_id_da_sessao(session_id: str) -> str | None:
     doc_id = _sessoes_ativas.get(session_id)
     if doc_id:
         return doc_id
-    doc = col_sessoes.find_one(
+    doc = _get_col_sessoes().find_one(
         {"session_id": session_id, "resumo": {"$in": ["", None]}},
         {"_id": 1},
         sort=[("iniciada_em", -1)],
@@ -77,7 +94,7 @@ def iniciar_sessao(session_id: str, user_id: str = "usuario_teste") -> None:
         return
     doc_id = str(uuid.uuid4())
     agora = _agora()
-    col_sessoes.insert_one({
+    _get_col_sessoes().insert_one({
         "_id": doc_id,
         "session_id": session_id,
         "user_id": user_id,
@@ -98,7 +115,7 @@ def salvar_mensagem(
     """Acrescenta uma mensagem à sessão aberta."""
     iniciar_sessao(session_id, user_id=user_id)
     doc_id = _doc_id_da_sessao(session_id)
-    col_sessoes.update_one(
+    _get_col_sessoes().update_one(
         {"_id": doc_id},
         {
             "$push": {"mensagens": {"role": role, "content": content}},
@@ -112,7 +129,7 @@ def encerrar_sessao(session_id: str) -> str | None:
     doc_id = _doc_id_da_sessao(session_id)
     if not doc_id:
         return None
-    doc = col_sessoes.find_one({"_id": doc_id})
+    doc = _get_col_sessoes().find_one({"_id": doc_id})
     if not doc or not doc.get("mensagens"):
         _sessoes_ativas.pop(session_id, None)
         return None
@@ -133,7 +150,7 @@ def encerrar_sessao(session_id: str) -> str | None:
             },
         )],
     )
-    col_sessoes.update_one(
+    _get_col_sessoes().update_one(
         {"_id": doc_id},
         {"$set": {"resumo": resumo, "atualizada_em": _agora()}},
     )
@@ -169,7 +186,7 @@ def recuperar_historico(
             } for ponto in resultados.points]
 
     docs = (
-        col_sessoes
+        _get_col_sessoes()
         .find(
             {"user_id": user_id, "resumo": {"$nin": ["", None]}},
             {"resumo": 1, "iniciada_em": 1},
@@ -185,5 +202,5 @@ def recuperar_historico(
 
 
 def recuperar_mensagens(doc_id: str) -> list[dict]:
-    doc = col_sessoes.find_one({"_id": doc_id}, {"mensagens": 1})
+    doc = _get_col_sessoes().find_one({"_id": doc_id}, {"mensagens": 1})
     return doc["mensagens"] if doc else []

@@ -8,10 +8,19 @@ from langchain.tools import tool
 from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
 
-from app.memory import db
+from app.memory import get_db
 
-col_eventos = db["eventos"]
-col_eventos.create_index([("user_id", 1), ("inicio", 1)])
+_indice_criado = False
+
+
+def _get_col_eventos():
+    """Obtém a coleção e cria seu índice apenas após conectar ao MongoDB."""
+    global _indice_criado
+    col_eventos = get_db()["eventos"]
+    if not _indice_criado:
+        col_eventos.create_index([("user_id", 1), ("inicio", 1)])
+        _indice_criado = True
+    return col_eventos
 
 
 def _user_id(config: RunnableConfig) -> str | None:
@@ -45,6 +54,7 @@ def criar_evento(
     if fim <= inicio:
         return {"status": "error", "message": "O fim deve ser posterior ao início."}
 
+    col_eventos = _get_col_eventos()
     conflito = col_eventos.find_one({
         "user_id": user_id,
         "status": "ativo",
@@ -98,7 +108,7 @@ def listar_eventos(
             filtro["inicio"]["$gte"] = de
         if ate:
             filtro["inicio"]["$lte"] = ate
-    eventos = list(col_eventos.find(filtro).sort("inicio", 1).limit(limite))
+    eventos = list(_get_col_eventos().find(filtro).sort("inicio", 1).limit(limite))
     return {"status": "ok", "eventos": eventos}
 
 
@@ -135,6 +145,7 @@ def atualizar_evento(
         return {"status": "error", "message": "Usuário não identificado."}
     if not alteracoes:
         return {"status": "error", "message": "Nenhuma alteração informada."}
+    col_eventos = _get_col_eventos()
     resultado = col_eventos.update_one(
         {"_id": evento_id, "user_id": user_id, "status": "ativo"},
         {"$set": alteracoes},
@@ -154,7 +165,7 @@ def cancelar_evento(evento_id: str, config: RunnableConfig) -> dict:
     user_id = _user_id(config)
     if not user_id:
         return {"status": "error", "message": "Usuário não identificado."}
-    resultado = col_eventos.update_one(
+    resultado = _get_col_eventos().update_one(
         {"_id": evento_id, "user_id": user_id, "status": "ativo"},
         {"$set": {"status": "cancelado", "cancelado_em": datetime.now(timezone.utc)}},
     )
