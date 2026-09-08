@@ -21,6 +21,7 @@ from app.tools.financeiro import TOOLS
 from app.tools.agenda import TOOLS_AGENDA
 from app.tools.faq import faq_retriever
 from app.tools.memoria import TOOLS_MEMORIA
+from app.tools.perfil import TOOLS_PERFIL
 
 router_agent = create_agent(model=llm_rapido, system_prompt=ROUTER_PROMPT_COMPLETO, tools=TOOLS_MEMORIA)
 financeiro_agent = create_agent(
@@ -28,7 +29,7 @@ financeiro_agent = create_agent(
     # latência de cada turno sem alterar o contrato JSON ou as operações.
     model=llm_rapido,
     system_prompt=FINANCEIRO_PROMPT_COMPLETO,
-    tools=TOOLS + TOOLS_MEMORIA,
+    tools=TOOLS + TOOLS_MEMORIA + TOOLS_PERFIL,
 )
 agenda_agent = create_agent(
     model=llm, system_prompt=AGENDA_PROMPT_COMPLETO, tools=TOOLS_AGENDA + TOOLS_MEMORIA

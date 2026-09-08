@@ -7,6 +7,7 @@ from app.config import GEMINI_API_KEY, QDRANT_API_KEY, QDRANT_URL
 
 COLLECTION_MEMORIA = "memoria_resumos"
 COLLECTION_FAQ = "faq_chunks"
+COLLECTION_PERFIL = "perfil_preferencias"
 EMBEDDING_DIM = 768
 
 qdrant = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
@@ -31,9 +32,20 @@ def garantir_collections() -> None:
         qdrant.create_collection(COLLECTION_MEMORIA, vectors_config=configuracao)
     if not qdrant.collection_exists(COLLECTION_FAQ):
         qdrant.create_collection(COLLECTION_FAQ, vectors_config=configuracao)
+    if not qdrant.collection_exists(COLLECTION_PERFIL):
+        qdrant.create_collection(COLLECTION_PERFIL, vectors_config=configuracao)
     try:
         qdrant.create_payload_index(
             collection_name=COLLECTION_MEMORIA,
+            field_name="user_id",
+            field_schema=models.PayloadSchemaType.KEYWORD,
+        )
+    except Exception as erro:
+        if "already exists" not in str(erro).lower():
+            raise
+    try:
+        qdrant.create_payload_index(
+            collection_name=COLLECTION_PERFIL,
             field_name="user_id",
             field_schema=models.PayloadSchemaType.KEYWORD,
         )

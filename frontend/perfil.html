@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>assessor.ai — perfil</title>
+  <link rel="stylesheet" href="perfil.css" />
+</head>
+<body>
+
+  <main class="sheet">
+    <header class="sheet__header">
+      <div class="sheet__identity">
+        <span class="sheet__dot"></span>
+        <h1 class="sheet__title">perfil</h1>
+      </div>
+      <div class="sheet__meta">
+        <span class="sheet__label">user</span>
+        <span class="sheet__user" id="user-badge">—</span>
+        <a class="sheet__back" href="index.html">voltar ao chat</a>
+      </div>
+    </header>
+
+    <div class="sheet__body">
+      <p class="sheet__intro">
+        Estes dados ficam salvos e valem para todas as conversas. O assessor lê
+        este cadastro quando precisa aconselhar. O chat não altera nada daqui.
+      </p>
+
+      <!-- Os names abaixo são o contrato com a API. Não renomeie. -->
+      <div class="field">
+        <label class="field__label" for="renda_mensal">renda mensal</label>
+        <input
+          class="field__control"
+          type="number"
+          id="renda_mensal"
+          name="renda_mensal"
+          min="0"
+          step="0.01"
+          placeholder="4200"
+        />
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="objetivo">objetivo</label>
+        <input
+          class="field__control"
+          type="text"
+          id="objetivo"
+          name="objetivo"
+          maxlength="120"
+          placeholder="juntar para viagem em dezembro"
+        />
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="tolerancia_risco">tolerância a risco</label>
+        <select class="field__select" id="tolerancia_risco" name="tolerancia_risco">
+          <option value="">selecione</option>
+          <option value="baixa">baixa</option>
+          <option value="media">media</option>
+          <option value="alta">alta</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="preferencias">preferências</label>
+        <textarea
+          class="field__area"
+          id="preferencias"
+          name="preferencias"
+          placeholder="quero juntar para uma viagem a João Pessoa em dezembro; não quero investimento agressivo."
+        ></textarea>
+        <span class="field__hint">
+          Texto livre. Escreva planos, restrições e gostos em frases normais.
+        </span>
+      </div>
+    </div>
+
+    <footer class="sheet__footer">
+      <p class="sheet__status" id="status">nada enviado ainda</p>
+      <button class="sheet__submit" id="submit" type="button">salvar perfil</button>
+    </footer>
+  </main>
+
+  <section class="echo" id="echo" hidden>
+    <p class="echo__label">resposta da api</p>
+    <pre class="echo__body" id="echo-body"></pre>
+  </section>
+
+  <script src="perfil.js"></script>
+</body>
+</html>

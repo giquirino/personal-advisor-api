@@ -19,6 +19,20 @@ class ChatResponse(BaseModel):
     agentes_chamados: list[str] = Field(default_factory=list)
 
 
+class PerfilRequest(BaseModel):
+    """Contrato de escrita usado exclusivamente pela tela Perfil."""
+
+    user_id: str = Field(..., min_length=1, max_length=120)
+    renda_mensal: float = Field(..., gt=0)
+    objetivo: str = Field(..., min_length=1, max_length=120)
+    tolerancia_risco: Literal["baixa", "media", "alta"]
+    preferencias: str = Field(..., min_length=1)
+
+
+class PerfilResponse(PerfilRequest):
+    """Confirma ao navegador exatamente o perfil que foi persistido."""
+
+
 class SessionResponse(BaseModel):
     """Ainda não é usado — é do Passo 6 da Etapa 3."""
     session_id: str
