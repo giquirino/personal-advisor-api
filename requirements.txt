@@ -12,3 +12,4 @@ langchain-text-splitters
 langgraph
 pypdf
 qdrant-client
+mcp>=2,<3

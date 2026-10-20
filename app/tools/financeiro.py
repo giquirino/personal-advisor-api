@@ -347,7 +347,7 @@ def daily_balance(date: str) -> dict:
                 COALESCE(SUM(CASE WHEN type = 1 THEN amount END), 0) -
                 COALESCE(SUM(CASE WHEN type = 2 THEN amount END), 0)
             FROM transactions
-            WHERE DATE(occurred_at) = %s;
+            WHERE (occurred_at AT TIME ZONE 'America/Sao_Paulo')::date = %s::date;
         """, (date,))
         total = cur.fetchone()[0]
         return {"status": "ok", "date": date, "balance": float(total)}
