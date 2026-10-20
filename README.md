@@ -36,33 +36,50 @@ The application uses a multi-agent workflow to route user requests to specialize
 ## Architecture
 
 ```text
-User -> FastAPI /chat -> Input guardrail -> Router agent
-                                           |       |       |
-                                           v       v       v
-                                      Financial  Agenda   FAQ
-                                           |       |       |
-                                           v       v       v
-                                      PostgreSQL MongoDB  Qdrant
-                                           |       |
-                                           +---+---+
-                                               v
-                                      Orchestrator agent
-                                               |
-                                               v
-                                        Output guardrail
+Browser -> FastAPI /chat -> Input guardrail -> Router agent
+                                            |       |       |
+                                            v       v       v
+                                       Financial  Agenda   FAQ
+                                            |       |       |
+                                            v       v       v
+                                       PostgreSQL MongoDB  Qdrant
+                                            |       |
+                                            +---+---+       |
+                                                v           |
+                                           Orchestrator      |
+                                                |           |
+                                                +-----+-----+
+                                                      v
+                                               Output guardrail
+                                                      |
+                                                      v
+                                            Evidence judge (TypeSafe JEV)
+                                                      |
+                                                      v
+                                                  Chat response
+
+MCP client -> stdio server -> existing financial tools -> PostgreSQL
+Chat turn -> in-memory metrics -> GET /monitor -> monitoring dashboard
 
 Long-term memory: MongoDB sessions -> summaries -> Qdrant semantic index
 FAQ knowledge: PDF -> one-time ingestion -> Qdrant semantic index
 ```
 
 MongoDB stores session messages, summaries, calendar events, and conversation metadata. Qdrant provides semantic retrieval for both conversation summaries and FAQ chunks.
+The financial and agenda paths pass through the orchestrator; the FAQ path joins
+at the output guardrail. The evidence judge runs last on responses that reach
+that guardrail. Input requests blocked by the guardrail do not call the judge.
+The MCP server is a separate entry point that reuses the same financial tools
+as the chat graph.
 
 ## Technology Stack
 
 - Python 3.11+
 - FastAPI and Uvicorn
 - LangChain and LangGraph
+- MCP Python SDK
 - Google Gemini and Groq
+- TypeSafe JEV for response verification
 - PostgreSQL
 - MongoDB
 - Qdrant
@@ -72,30 +89,48 @@ MongoDB stores session messages, summaries, calendar events, and conversation me
 
 ```text
 .
+|-- .cursor/
+|   `-- mcp.json
 |-- app/
 |   |-- routes/
 |   |   |-- chat.py
+|   |   |-- monitor.py
+|   |   |-- perfil.py
 |   |   `-- sessions.py
 |   |-- tools/
 |   |   |-- agenda.py
 |   |   |-- db.py
 |   |   |-- faq.py
 |   |   |-- financeiro.py
-|   |   `-- memoria.py
+|   |   |-- memoria.py
+|   |   `-- perfil.py
 |   |-- config.py
 |   |-- graph.py
 |   |-- guardrail.py
+|   |-- ingest_faq.py
+|   |-- juiz.py
 |   |-- llms.py
 |   |-- main.py
+|   |-- mcp_server.py
 |   |-- memory.py
+|   |-- observabilidade.py
+|   |-- perfil.py
 |   |-- prompts.py
-|   `-- schemas.py
+|   |-- schemas.py
+|   `-- vectorstore.py
 |-- data/
 |   `-- FAQ_assessor_v1.1.pdf
 |-- frontend/
 |   |-- app.js
 |   |-- index.html
+|   |-- monitor.html
+|   |-- perfil.css
+|   |-- perfil.html
+|   |-- perfil.js
 |   `-- style.css
+|-- tests/
+|   `-- test_integrations.py
+|-- .env.example
 |-- requirements.txt
 `-- README.md
 ```
@@ -198,7 +233,7 @@ Example response:
 ```json
 {
   "resposta": "Your current financial summary is...",
-  "agentes_chamados": ["roteador", "financeiro", "orquestrador"]
+  "agentes_chamados": ["roteador", "financeiro", "orquestrador", "juiz:apoiada noul=0.91"]
 }
 ```
 
@@ -254,12 +289,16 @@ Conversation summaries are indexed in Qdrant and retrieved through semantic simi
 
 ## Security Notes
 
-- Personal data is anonymized before being sent to the models.
+- User messages are anonymized before the specialist agents run.
 - Responses are checked for sensitive data and financial compliance.
+- The final evidence check sends the question, response, and tool evidence to TypeSafe JEV when configured.
 - Prompt injection and requests for internal credentials are blocked.
 - Database credentials and API keys must remain in `.env`.
 - This project is an educational assistant and does not replace professional financial advice.
 
 ## Development Status
 
-The project currently supports the full FastAPI workflow, persistent sessions, financial tools, calendar tools, FAQ retrieval, and long-term memory. External services must be configured and available for end-to-end operation.
+The project supports the FastAPI chat workflow, persistent sessions, financial
+and calendar tools, FAQ retrieval, long-term memory, an MCP financial server,
+in-process monitoring, and response verification. External services must be
+configured and available for end-to-end operation.
