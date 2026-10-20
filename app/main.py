@@ -19,6 +19,7 @@ from app.config import (
 from app.routes.chat import router as chat_router
 from app.routes.sessions import router as sessions_router
 from app.routes.perfil import router as perfil_router
+from app.routes.monitor import router as monitor_router
 from app.schemas import HealthCheck, HealthResponse
 
 for _problema in validar_config():
@@ -45,6 +46,7 @@ app.add_middleware(
 app.include_router(chat_router)
 app.include_router(sessions_router)
 app.include_router(perfil_router)
+app.include_router(monitor_router)
 
 def _not_configured(variable: str) -> HealthCheck:
     return HealthCheck(
