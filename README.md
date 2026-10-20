@@ -28,6 +28,9 @@ The application uses a multi-agent workflow to route user requests to specialize
 - Input and output guardrails for PII, prompt injection, and compliance
 - Gemini models with Groq fallback
 - Browser-based chat interface
+- Financial tools exposed to MCP clients over stdio
+- In-process monitoring dashboard for turns, model usage, latency, and estimated cost
+- Evidence check on final responses using TypeSafe JEV
 - Interactive API documentation provided by FastAPI
 
 ## Architecture
@@ -135,6 +138,7 @@ Create a `.env` file in the project root:
 ```env
 GEMINI_API_KEY=your_gemini_api_key
 GROQ_API_KEY=your_groq_api_key
+TYPESAFE_API_KEY=your_typesafe_api_key
 DATABASE_URL=postgresql://user:password@localhost:5432/database
 MONGODB_URI=mongodb://localhost:27017
 QDRANT_URL=https://your-cluster.region.cloud.qdrant.io
@@ -161,6 +165,17 @@ Open the following URLs:
 - Web interface: `http://localhost:8000`
 - Swagger documentation: `http://localhost:8000/docs`
 - Health check: `http://localhost:8000/health`
+- Monitoring dashboard: `http://localhost:8000/monitor.html`
+
+The monitoring API is available at `GET /monitor`. Metrics cover the current
+server process and reset on restart. Cost uses fixed per-token prices, so it is
+an estimate rather than a provider invoice. Without `TYPESAFE_API_KEY`, the
+evidence check returns a fixed safe response for unverified messages.
+
+To connect an MCP client, configure it to run `python -m app.mcp_server` from
+the project root. The `.cursor/mcp.json` file includes this setup for Cursor.
+The MCP server uses the same `DATABASE_URL` as the API and exposes the existing
+five financial tools; it does not start an HTTP server.
 
 ## API Endpoints
 

@@ -21,6 +21,7 @@ FAQ_PDF_PATH = _faq_pdf_path or DATA_DIR / "FAQ_assessor_v1.1.pdf"
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+TYPESAFE_API_KEY = os.getenv("TYPESAFE_API_KEY")
 DATABASE_URL = os.getenv("DATABASE_URL")
 # Não use um endereço local como fallback: uma variável ausente deve ser
 # explicitamente reportada pelo health check, e não parecer uma configuração válida.
