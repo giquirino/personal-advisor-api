@@ -1,11 +1,11 @@
 <div align="center">
 
-# Personal Advisor API
+# 💰 Personal Advisor API
 
 ### Projeto Acadêmico de Inteligência Artificial
 
 **Desenvolvido por Giovanna Quirino**<br>
-**Curso de Inteligência Artificial — 2026**
+**Disciplina de Inteligência Artificial — 2026**
 
 Orientador: **Professor Marcelo Bezerra Grilo Junior**<br>
 **Escola de Tecnologia — Instituto J&F**
