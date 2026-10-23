@@ -240,7 +240,7 @@ Example response:
 ### Close and summarize a session
 
 ```http
-POST /sessions/{session_id}/encerrar
+POST /sessions/{session_id}/encerrar?user_id={user_id}
 ```
 
 Example response:
@@ -252,7 +252,9 @@ Example response:
 }
 ```
 
-Calling this endpoint again for an already closed session returns `null` as the summary without raising an error.
+The `user_id` query parameter must match the user who owns the session. Calling
+this endpoint again for an already closed session returns `null` as the summary
+without raising an error.
 
 ### Check application health
 

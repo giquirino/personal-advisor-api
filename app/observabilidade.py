@@ -21,9 +21,8 @@ PRECO_POR_MILHAO: dict[str, tuple[float, float]] = {
     "openai/gpt-oss-20b": (0.075, 0.30),
 }
 
-# O especialista promete Gemini. Groq neste nó é o with_fallbacks de llms.py.
-_NOS_ESPECIALISTA = {"financeiro", "agenda"}
-_MODELO_ESPECIALISTA = "gemini-2.5-flash"
+# Modelos principais por nó; somente agenda usa fallback configurado.
+_MODELO_PRINCIPAL = {"financeiro": "openai/gpt-oss-20b", "agenda": "gemini-2.5-flash"}
 
 LIMITE_TURNOS = 50
 LIMITE_P95_MS = 8_000
@@ -68,7 +67,7 @@ def _no_do_grafo(metadata: dict | None) -> str:
     if no:
         candidatos.append(str(no))
     for nome in candidatos:
-        if nome in _NOS_ESPECIALISTA:
+        if nome in _MODELO_PRINCIPAL:
             return nome
     return candidatos[0] if candidatos else ""
 
@@ -106,9 +105,9 @@ def custo_usd(modelo: str, entrada: int, saida: int) -> float:
 
 
 def _eh_fallback(no: str, modelo: str) -> bool:
-    if no not in _NOS_ESPECIALISTA:
+    if no not in _MODELO_PRINCIPAL:
         return False
-    return _MODELO_ESPECIALISTA not in modelo
+    return _MODELO_PRINCIPAL[no] not in modelo
 
 
 class ColetorChamadas(BaseCallbackHandler):

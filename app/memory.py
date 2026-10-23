@@ -1,4 +1,4 @@
-"""Persistência de sessões no MongoDB e índice semântico no Qdrant."""
+"""PersistÃƒÆ’Ã‚Âªncia de sessÃƒÆ’Ã‚Âµes no MongoDB e ÃƒÆ’Ã‚Â­ndice semÃƒÆ’Ã‚Â¢ntico no Qdrant."""
 
 import uuid
 from datetime import datetime, timezone
@@ -20,17 +20,17 @@ _indices_criados = False
 
 
 def get_db():
-    """Obtém o banco somente quando uma operação realmente precisa dele."""
+    """ObtÃƒÆ’Ã‚Â©m o banco somente quando uma operaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o realmente precisa dele."""
     global _mongo
     if not MONGODB_URI:
-        raise RuntimeError("MONGODB_URI não está configurada. Consulte GET /health.")
+        raise RuntimeError("MONGODB_URI nÃƒÆ’Ã‚Â£o estÃƒÆ’Ã‚Â¡ configurada. Consulte GET /health.")
     if _mongo is None:
         _mongo = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5_000)
     return _mongo["assessor"]
 
 
 def _get_col_sessoes():
-    """Garante os índices após a primeira conexão bem-sucedida ao MongoDB."""
+    """Garante os ÃƒÆ’Ã‚Â­ndices apÃƒÆ’Ã‚Â³s a primeira conexÃƒÆ’Ã‚Â£o bem-sucedida ao MongoDB."""
     global _indices_criados
     col_sessoes = get_db()["sessoes"]
     if not _indices_criados:
@@ -41,19 +41,19 @@ def _get_col_sessoes():
     return col_sessoes
 
 _PROMPT_RESUMO = """\
-Você é um assistente que resume conversas de assessoria financeira e agenda.
+VocÃƒÆ’Ã‚Âª ÃƒÆ’Ã‚Â© um assistente que resume conversas de assessoria financeira e agenda.
 Gere um resumo conciso em 2-4 frases capturando:
-- O que o usuário fez (transações registradas, eventos agendados)
-- O que o usuário perguntou
-- Informações relevantes mencionadas (valores, datas, categorias)
+- O que o usuÃƒÆ’Ã‚Â¡rio fez (transaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Âµes registradas, eventos agendados)
+- O que o usuÃƒÆ’Ã‚Â¡rio perguntou
+- InformaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Âµes relevantes mencionadas (valores, datas, categorias)
 
-Responda APENAS com o resumo, sem introdução ou explicação.
+Responda APENAS com o resumo, sem introduÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o ou explicaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o.
 
 Conversa:
 {conversa}
 """
 
-_sessoes_ativas: dict[str, str] = {}
+_sessoes_ativas: dict[tuple[str, str], str] = {}
 
 
 def _agora() -> datetime:
@@ -73,24 +73,25 @@ def _gerar_resumo(mensagens: list[dict]) -> str:
     ).content.strip()
 
 
-def _doc_id_da_sessao(session_id: str) -> str | None:
-    doc_id = _sessoes_ativas.get(session_id)
+def _doc_id_da_sessao(session_id: str, user_id: str) -> str | None:
+    chave = (session_id, user_id)
+    doc_id = _sessoes_ativas.get(chave)
     if doc_id:
         return doc_id
     doc = _get_col_sessoes().find_one(
-        {"session_id": session_id, "resumo": {"$in": ["", None]}},
+        {"session_id": session_id, "user_id": user_id, "resumo": {"$in": ["", None]}},
         {"_id": 1},
         sort=[("iniciada_em", -1)],
     )
     if not doc:
         return None
-    _sessoes_ativas[session_id] = doc["_id"]
+    _sessoes_ativas[chave] = doc["_id"]
     return doc["_id"]
 
 
 def iniciar_sessao(session_id: str, user_id: str = "usuario_teste") -> None:
-    """Cria uma sessão vinculada ao identificador estável do usuário."""
-    if _doc_id_da_sessao(session_id):
+    """Cria uma sessÃƒÆ’Ã‚Â£o vinculada ao identificador estÃƒÆ’Ã‚Â¡vel do usuÃƒÆ’Ã‚Â¡rio."""
+    if _doc_id_da_sessao(session_id, user_id):
         return
     doc_id = str(uuid.uuid4())
     agora = _agora()
@@ -103,25 +104,7 @@ def iniciar_sessao(session_id: str, user_id: str = "usuario_teste") -> None:
         "resumo": "",
         "mensagens": [],
     })
-    _sessoes_ativas[session_id] = doc_id
-
-
-def salvar_mensagem(
-    session_id: str,
-    role: str,
-    content: str,
-    user_id: str = "usuario_teste",
-) -> None:
-    """Acrescenta uma mensagem à sessão aberta."""
-    iniciar_sessao(session_id, user_id=user_id)
-    doc_id = _doc_id_da_sessao(session_id)
-    _get_col_sessoes().update_one(
-        {"_id": doc_id},
-        {
-            "$push": {"mensagens": {"role": role, "content": content}},
-            "$set": {"atualizada_em": _agora(), "user_id": user_id},
-        },
-    )
+    _sessoes_ativas[(session_id, user_id)] = doc_id
 
 
 def salvar_mensagens(
@@ -129,30 +112,29 @@ def salvar_mensagens(
     mensagens: list[dict[str, str]],
     user_id: str = "usuario_teste",
 ) -> None:
-    """Persiste várias mensagens em uma única atualização no MongoDB."""
+    """Persiste vÃƒÆ’Ã‚Â¡rias mensagens em uma ÃƒÆ’Ã‚Âºnica atualizaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o no MongoDB."""
     iniciar_sessao(session_id, user_id=user_id)
-    doc_id = _doc_id_da_sessao(session_id)
+    doc_id = _doc_id_da_sessao(session_id, user_id)
     _get_col_sessoes().update_one(
         {"_id": doc_id},
         {
             "$push": {"mensagens": {"$each": mensagens}},
-            "$set": {"atualizada_em": _agora(), "user_id": user_id},
+            "$set": {"atualizada_em": _agora()},
         },
     )
 
 
-def encerrar_sessao(session_id: str) -> str | None:
-    """Resume a sessão, persiste o resumo e o indexa semanticamente."""
-    doc_id = _doc_id_da_sessao(session_id)
+def encerrar_sessao(session_id: str, user_id: str) -> str | None:
+    """Resume a sessÃƒÆ’Ã‚Â£o, persiste o resumo e o indexa semanticamente."""
+    doc_id = _doc_id_da_sessao(session_id, user_id)
     if not doc_id:
         return None
     doc = _get_col_sessoes().find_one({"_id": doc_id})
     if not doc or not doc.get("mensagens"):
-        _sessoes_ativas.pop(session_id, None)
+        _sessoes_ativas.pop((session_id, user_id), None)
         return None
 
     resumo = _gerar_resumo(doc["mensagens"])
-    user_id = doc.get("user_id", "usuario_teste")
     garantir_collections()
     qdrant.upsert(
         collection_name=COLLECTION_MEMORIA,
@@ -171,7 +153,7 @@ def encerrar_sessao(session_id: str) -> str | None:
         {"_id": doc_id},
         {"$set": {"resumo": resumo, "atualizada_em": _agora()}},
     )
-    _sessoes_ativas.pop(session_id, None)
+    _sessoes_ativas.pop((session_id, user_id), None)
     return resumo
 
 
@@ -216,8 +198,3 @@ def recuperar_historico(
         "iniciada_em": doc["iniciada_em"],
         "resumo": doc["resumo"],
     } for doc in docs]
-
-
-def recuperar_mensagens(doc_id: str) -> list[dict]:
-    doc = _get_col_sessoes().find_one({"_id": doc_id}, {"mensagens": 1})
-    return doc["mensagens"] if doc else []

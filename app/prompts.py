@@ -1,7 +1,5 @@
-from datetime import datetime, timezone
-
-_agora = datetime.now(timezone.utc).astimezone()
-_data_hora_fmt = _agora.strftime("%A, %d de %B de %Y — %H:%M:%S %Z")
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 # ==============================================================================
 # PERSONA SISTEMA — bloco compartilhado repassado pelo Roteador a todos os agentes
@@ -11,12 +9,13 @@ PERSONA_SISTEMA = """
 Você é o Assessor.AI — um assistente pessoal de compromissos e finanças. Você é especialista em gestão financeira e organização de rotina. Sua principal característica é a objetividade e a confiabilidade. Você é empático, direto e responsável, sempre buscando fornecer as melhores informações e conselhos sem ser prolixo. Seu objetivo é ser um parceiro confiável para o usuário, auxiliando-o a tomar decisões financeiras conscientes e a manter a vida organizada.
 """
 
-_CONTEXTO_TEMPORAL = f"""
-### CONTEXTO TEMPORAL
-Data e hora atual (fornecida pelo sistema): {_data_hora_fmt}
-Use esta referência para interpretar "hoje", "ontem", "semana passada",
-calcular datas relativas e preencher timestamps nas operações.
-"""
+def contexto_temporal() -> str:
+    agora = datetime.now(ZoneInfo("America/Sao_Paulo"))
+    return (
+        "Data e hora atual (fornecida pelo sistema): "
+        f"{agora.isoformat(timespec='seconds')}. "
+        "Use esta referência para interpretar datas relativas e preencher timestamps."
+    )
 
 MEMORIA_CONVERSAS = """
 ### MEMÓRIA DE CONVERSAS ANTERIORES
@@ -45,7 +44,6 @@ ROUTER_PROMPT = f"""
 {MEMORIA_CONVERSAS}
 
 
-{_CONTEXTO_TEMPORAL}
 
 
 ### PAPEL
@@ -135,7 +133,6 @@ FINANCEIRO_PROMPT = f"""
 {MEMORIA_CONVERSAS}
 
 
-{_CONTEXTO_TEMPORAL}
 
 
 ### OBJETIVO
@@ -236,7 +233,6 @@ AGENDA_PROMPT = f"""
 {MEMORIA_CONVERSAS}
 
 
-{_CONTEXTO_TEMPORAL}
 
 
 ### OBJETIVO
@@ -389,7 +385,6 @@ ORQUESTRADOR_PROMPT = f"""
 {PERSONA_SISTEMA}
 
 
-{_CONTEXTO_TEMPORAL}
 
 
 ### PAPEL

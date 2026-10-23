@@ -28,6 +28,22 @@ def _user_id(config: RunnableConfig) -> str | None:
     return configurable.get("user_id") or configurable.get("thread_id")
 
 
+def _instante(valor: str) -> datetime:
+    instante = datetime.fromisoformat(valor.replace("Z", "+00:00"))
+    if instante.tzinfo is None or instante.utcoffset() is None:
+        raise ValueError("Data e hora devem incluir o fuso horário.")
+    return instante.astimezone(timezone.utc)
+
+
+def _conflito(eventos, inicio: datetime, fim: datetime, ignorar_id: str | None = None):
+    for evento in eventos:
+        if evento["_id"] == ignorar_id:
+            continue
+        if _instante(evento["inicio"]) < fim and _instante(evento["fim"]) > inicio:
+            return evento
+    return None
+
+
 class CriarEventoArgs(BaseModel):
     titulo: str = Field(..., min_length=1)
     inicio: str = Field(..., description="Data e hora ISO 8601, por exemplo 2026-09-01T14:00:00-03:00.")
@@ -51,16 +67,15 @@ def criar_evento(
     user_id = _user_id(config)
     if not user_id:
         return {"status": "error", "message": "Usuário não identificado."}
-    if fim <= inicio:
+    try:
+        inicio_utc, fim_utc = _instante(inicio), _instante(fim)
+    except ValueError as exc:
+        return {"status": "error", "message": str(exc)}
+    if fim_utc <= inicio_utc:
         return {"status": "error", "message": "O fim deve ser posterior ao início."}
 
     col_eventos = _get_col_eventos()
-    conflito = col_eventos.find_one({
-        "user_id": user_id,
-        "status": "ativo",
-        "inicio": {"$lt": fim},
-        "fim": {"$gt": inicio},
-    })
+    conflito = _conflito(col_eventos.find({"user_id": user_id, "status": "ativo"}), inicio_utc, fim_utc)
     if conflito:
         return {
             "status": "conflict",
@@ -72,8 +87,8 @@ def criar_evento(
         "_id": str(uuid.uuid4()),
         "user_id": user_id,
         "titulo": titulo,
-        "inicio": inicio,
-        "fim": fim,
+        "inicio": inicio_utc.isoformat(),
+        "fim": fim_utc.isoformat(),
         "local": local,
         "participantes": participantes or [],
         "lembrete": lembrete,
@@ -102,13 +117,19 @@ def listar_eventos(
     if not user_id:
         return {"status": "error", "message": "Usuário não identificado."}
     filtro: dict = {"user_id": user_id, "status": "ativo"}
-    if de or ate:
-        filtro["inicio"] = {}
-        if de:
-            filtro["inicio"]["$gte"] = de
-        if ate:
-            filtro["inicio"]["$lte"] = ate
-    eventos = list(_get_col_eventos().find(filtro).sort("inicio", 1).limit(limite))
+    try:
+        de_utc = _instante(de) if de else None
+        ate_utc = _instante(ate) if ate else None
+    except ValueError as exc:
+        return {"status": "error", "message": str(exc)}
+    eventos = sorted(
+        (
+            evento for evento in _get_col_eventos().find(filtro)
+            if (de_utc is None or _instante(evento["inicio"]) >= de_utc)
+            and (ate_utc is None or _instante(evento["inicio"]) <= ate_utc)
+        ),
+        key=lambda evento: _instante(evento["inicio"]),
+    )[:limite]
     return {"status": "ok", "eventos": eventos}
 
 
@@ -146,6 +167,24 @@ def atualizar_evento(
     if not alteracoes:
         return {"status": "error", "message": "Nenhuma alteração informada."}
     col_eventos = _get_col_eventos()
+    evento = col_eventos.find_one({"_id": evento_id, "user_id": user_id, "status": "ativo"})
+    if not evento:
+        return {"status": "error", "message": "Evento não encontrado."}
+    if inicio is not None or fim is not None:
+        try:
+            inicio_utc = _instante(inicio or evento["inicio"])
+            fim_utc = _instante(fim or evento["fim"])
+        except ValueError as exc:
+            return {"status": "error", "message": str(exc)}
+        if fim_utc <= inicio_utc:
+            return {"status": "error", "message": "O fim deve ser posterior ao início."}
+        conflito = _conflito(
+            col_eventos.find({"user_id": user_id, "status": "ativo"}),
+            inicio_utc, fim_utc, evento_id,
+        )
+        if conflito:
+            return {"status": "conflict", "message": "Existe um compromisso nesse horário.", "evento": conflito}
+        alteracoes.update({"inicio": inicio_utc.isoformat(), "fim": fim_utc.isoformat()})
     resultado = col_eventos.update_one(
         {"_id": evento_id, "user_id": user_id, "status": "ativo"},
         {"$set": alteracoes},

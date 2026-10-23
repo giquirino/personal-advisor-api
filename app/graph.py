@@ -5,7 +5,7 @@ import operator
 from typing import Annotated
 
 from langchain.agents import create_agent
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langgraph.graph import END, MessagesState, StateGraph
 
 from app.guardrail import anonimizar_entrada, guardrail_entrada, guardrail_saida
@@ -18,6 +18,7 @@ from app.prompts import (
     FAQ_PROMPT_COMPLETO,
     FINANCEIRO_PROMPT_COMPLETO,
     ROUTER_PROMPT_COMPLETO,
+    contexto_temporal,
 )
 from app.tools.financeiro import TOOLS
 from app.tools.agenda import TOOLS_AGENDA
@@ -53,6 +54,10 @@ class Estado(MessagesState):
 def _texto_mensagem(mensagem: object) -> str:
     conteudo = getattr(mensagem, "content", mensagem)
     return conteudo if isinstance(conteudo, str) else str(conteudo)
+
+
+def _mensagens_do_agente(estado: Estado) -> list:
+    return [SystemMessage(content=contexto_temporal()), *estado["messages"]]
 
 
 def _extrair_json_do_especialista(texto: str) -> dict | None:
@@ -116,7 +121,7 @@ def decidir_pos_guardrail_entrada(estado: Estado) -> str:
 
 
 def no_roteador(estado: Estado, config) -> dict:
-    saida = router_agent.invoke({"messages": list(estado["messages"])}, config=config)
+    saida = router_agent.invoke({"messages": _mensagens_do_agente(estado)}, config=config)
     texto = _texto_mensagem(saida["messages"][-1])
     if not texto.strip().startswith("ROUTE="):
         return {"agentes_chamados": ["roteador"], "rota": "fim", "messages": [AIMessage(content=texto)]}
@@ -129,20 +134,23 @@ def no_roteador(estado: Estado, config) -> dict:
 
 
 def no_financeiro(estado: Estado, config) -> dict:
-    saida = financeiro_agent.invoke({"messages": list(estado["messages"])}, config=config)
-    novas = saida["messages"][len(estado["messages"]):] or [saida["messages"][-1]]
+    mensagens = _mensagens_do_agente(estado)
+    saida = financeiro_agent.invoke({"messages": mensagens}, config=config)
+    novas = saida["messages"][len(mensagens):] or [saida["messages"][-1]]
     return {"agentes_chamados": ["financeiro"], "messages": novas}
 
 
 def no_agenda(estado: Estado, config) -> dict:
-    saida = agenda_agent.invoke({"messages": list(estado["messages"])}, config=config)
-    novas = saida["messages"][len(estado["messages"]):] or [saida["messages"][-1]]
+    mensagens = _mensagens_do_agente(estado)
+    saida = agenda_agent.invoke({"messages": mensagens}, config=config)
+    novas = saida["messages"][len(mensagens):] or [saida["messages"][-1]]
     return {"agentes_chamados": ["agenda"], "messages": novas}
 
 
 def no_faq(estado: Estado, config) -> dict:
-    saida = faq_agent.invoke({"messages": list(estado["messages"])}, config=config)
-    novas = saida["messages"][len(estado["messages"]):] or [saida["messages"][-1]]
+    mensagens = _mensagens_do_agente(estado)
+    saida = faq_agent.invoke({"messages": mensagens}, config=config)
+    novas = saida["messages"][len(mensagens):] or [saida["messages"][-1]]
     return {"agentes_chamados": ["faq"], "messages": novas}
 
 

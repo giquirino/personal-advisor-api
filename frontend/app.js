@@ -46,7 +46,7 @@ async function iniciarNovaSessao() {
   let resumo = null;
   try {
     const resposta = await fetch(
-      `${API_BASE}/sessions/${encodeURIComponent(sessionId)}/encerrar`,
+      `${API_BASE}/sessions/${encodeURIComponent(sessionId)}/encerrar?user_id=${encodeURIComponent(userId)}`,
       { method: "POST" }
     );
     if (!resposta.ok) throw new Error(`status ${resposta.status}`);
