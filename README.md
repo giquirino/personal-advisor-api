@@ -2,7 +2,7 @@
 
 # 💰 Personal Advisor API
 
-### Projeto Acadêmico de Inteligência Artificial
+### 🎓 Projeto Acadêmico de Inteligência Artificial
 
 **Desenvolvido por Giovanna Quirino**<br>
 **Disciplina de Inteligência Artificial — 2026**
@@ -18,7 +18,7 @@ Um assistente pessoal com inteligência artificial para gestão financeira e org
 
 O aplicativo usa um fluxo multiagente para encaminhar solicitações a agentes especializados em finanças, agenda e perguntas frequentes. As conversas são armazenadas no MongoDB, e seus resumos são indexados no Qdrant para busca semântica entre sessões.
 
-## Funcionalidades
+## ✨ Funcionalidades
 
 - Orquestração multiagente com LangGraph
 - Criação, busca e atualização de transações financeiras e cálculo de saldo
@@ -33,7 +33,7 @@ O aplicativo usa um fluxo multiagente para encaminhar solicitações a agentes e
 - Verificação de evidências nas respostas finais com TypeSafe JEV
 - Documentação interativa da API fornecida pelo FastAPI
 
-## Arquitetura
+## 🏗️ Arquitetura
 
 ```text
 Navegador -> FastAPI /chat -> Proteção de entrada -> Agente roteador
@@ -69,7 +69,7 @@ O MongoDB armazena mensagens e resumos das sessões, compromissos e metadados da
 Os fluxos financeiro e de agenda passam pelo orquestrador; o fluxo de perguntas frequentes se conecta à proteção de saída. O juiz de evidências é executado por último nas respostas que chegam a essa proteção. Solicitações bloqueadas pela proteção de entrada não chamam o juiz.
 O servidor MCP é uma entrada separada que reutiliza as mesmas ferramentas financeiras do fluxo de chat.
 
-## Tecnologias
+## 🧰 Tecnologias
 
 - Python 3.11+
 - FastAPI e Uvicorn
@@ -82,7 +82,7 @@ O servidor MCP é uma entrada separada que reutiliza as mesmas ferramentas finan
 - Qdrant
 - HTML, CSS, and JavaScript
 
-## Estrutura do projeto
+## 📂 Estrutura do projeto
 
 ```text
 .
@@ -136,7 +136,7 @@ O servidor MCP é uma entrada separada que reutiliza as mesmas ferramentas finan
 `-- README.md
 ```
 
-## Como começar
+## 🚀 Como começar
 
 ### 1. Clone o repositório
 
@@ -208,11 +208,11 @@ O endpoint de monitoramento está disponível em `GET /monitor`. As métricas co
 Para conectar um cliente MCP, configure-o para executar `python -m app.mcp_server` a partir da raiz do projeto. O arquivo `.cursor/mcp.json` já contém essa configuração para o Cursor.
 O servidor MCP usa o mesmo `DATABASE_URL` da API e disponibiliza as cinco ferramentas financeiras existentes. Ele não inicia um servidor HTTP.
 
-## Integração contínua
+## ⚙️ Integração contínua
 
 O GitHub Actions instala as dependências, compila a aplicação e os testes e executa os testes automatizados em pull requests e em envios para a branch `main`. Novas pull requests usam o modelo `.github/pull_request_template.md`.
 
-## Endpoints da API
+## 🔌 Endpoints da API
 
 ### Enviar uma mensagem
 
@@ -276,7 +276,7 @@ O endpoint verifica as configurações necessárias e a conectividade com MongoD
 
 `not_configured` indica que falta uma variável obrigatória do `.env`; `unavailable` indica que a variável existe, mas o serviço não pôde ser acessado. As chaves de API são verificadas apenas quanto à presença, sem consumir a cota dos modelos.
 
-## Memória de longo prazo
+## 🧠 Memória de longo prazo
 
 As mensagens são armazenadas durante a sessão. Quando ela é encerrada, o assistente gera um resumo conciso e o salva no MongoDB.
 
@@ -284,7 +284,7 @@ O agente roteador e os agentes financeiro e de agenda podem buscar resumos de se
 
 Os resumos são indexados no Qdrant e recuperados por similaridade semântica. Assim, conceitos relacionados e sinônimos podem localizar memórias relevantes mesmo quando as palavras usadas são diferentes.
 
-## Segurança
+## 🔒 Segurança
 
 - As mensagens são anonimizadas antes de serem processadas pelos agentes especializados.
 - As respostas são verificadas quanto a dados sensíveis e conformidade financeira.
@@ -293,6 +293,6 @@ Os resumos são indexados no Qdrant e recuperados por similaridade semântica. A
 - Credenciais de banco de dados e chaves de API devem permanecer no `.env`.
 - Este projeto é um assistente educacional e não substitui orientação financeira profissional.
 
-## Status do desenvolvimento
+## 📊 Status do desenvolvimento
 
 O projeto oferece o fluxo de chat com FastAPI, sessões persistentes, ferramentas financeiras e de agenda, busca em perguntas frequentes, memória de longo prazo, servidor financeiro MCP, monitoramento no processo e verificação de respostas. Os serviços externos precisam estar configurados e disponíveis para a execução completa.
