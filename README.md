@@ -2,93 +2,94 @@
 
 # Personal Advisor API
 
-### Artificial Intelligence Academic Project
+### Projeto Acadêmico de Inteligência Artificial
 
-**Developed by Giovanna Quirino**<br>
-**Artificial Intelligence Course — 2026**
+**Desenvolvido por Giovanna Quirino**<br>
+**Curso de Inteligência Artificial — 2026**
 
-Academic advisor: **Professor Marcelo Bezerra Grilo Junior**<br>
-**School of Technology — Instituto J&F**
+Orientador: **Professor Marcelo Bezerra Grilo Junior**<br>
+**Escola de Tecnologia — Instituto J&F**
 
 </div>
 
 ---
 
-An AI-powered personal assistant for financial management and scheduling, built with FastAPI, LangChain, and LangGraph.
+Um assistente pessoal com inteligência artificial para gestão financeira e organização de compromissos, desenvolvido com FastAPI, LangChain e LangGraph.
 
-The application uses a multi-agent workflow to route user requests to specialized financial, agenda, and FAQ agents. Conversation data is persisted in MongoDB, while summaries are indexed in Qdrant for semantic retrieval across sessions.
+O aplicativo usa um fluxo multiagente para encaminhar solicitações a agentes especializados em finanças, agenda e perguntas frequentes. As conversas são armazenadas no MongoDB, e seus resumos são indexados no Qdrant para busca semântica entre sessões.
 
-## Features
+## Funcionalidades
 
-- Multi-agent orchestration with LangGraph
-- Financial transaction creation, search, balance calculation, and updates
-- Persistent calendar event creation, listing, updating, and cancellation
-- Long-term conversation memory persisted in MongoDB and indexed in Qdrant
-- FAQ retrieval from a PDF using embeddings and Qdrant
-- Input and output guardrails for PII, prompt injection, and compliance
-- Gemini models with Groq fallback
-- Browser-based chat interface
-- Financial tools exposed to MCP clients over stdio
-- In-process monitoring dashboard for turns, model usage, latency, and estimated cost
-- Evidence check on final responses using TypeSafe JEV
-- Interactive API documentation provided by FastAPI
+- Orquestração multiagente com LangGraph
+- Criação, busca e atualização de transações financeiras e cálculo de saldo
+- Criação, consulta, atualização e cancelamento de compromissos persistidos
+- Memória de longo prazo das conversas armazenada no MongoDB e indexada no Qdrant
+- Busca em perguntas frequentes a partir de PDF, embeddings e Qdrant
+- Proteções de entrada e saída contra dados pessoais, injeção de prompt e violações de conformidade
+- Modelos Gemini com Groq como alternativa
+- Interface de chat acessível pelo navegador
+- Ferramentas financeiras disponíveis para clientes MCP via stdio
+- Painel de monitoramento do processo para turnos, uso de modelos, latência e custo estimado
+- Verificação de evidências nas respostas finais com TypeSafe JEV
+- Documentação interativa da API fornecida pelo FastAPI
 
-## Architecture
+## Arquitetura
 
 ```text
-Browser -> FastAPI /chat -> Input guardrail -> Router agent
+Navegador -> FastAPI /chat -> Proteção de entrada -> Agente roteador
                                             |       |       |
                                             v       v       v
-                                       Financial  Agenda   FAQ
+                                       Financeiro Agenda   Perguntas frequentes
                                             |       |       |
                                             v       v       v
                                        PostgreSQL MongoDB  Qdrant
                                             |       |
                                             +---+---+       |
                                                 v           |
-                                           Orchestrator      |
+                                           Orquestrador      |
                                                 |           |
                                                 +-----+-----+
                                                       v
-                                               Output guardrail
+                                               Proteção de saída
                                                       |
                                                       v
-                                            Evidence judge (TypeSafe JEV)
+                                            Juiz de evidências (TypeSafe JEV)
                                                       |
                                                       v
-                                                  Chat response
+                                                  Resposta do chat
 
-MCP client -> stdio server -> existing financial tools -> PostgreSQL
-Chat turn -> in-memory metrics -> GET /monitor -> monitoring dashboard
+Cliente MCP -> servidor stdio -> ferramentas financeiras -> PostgreSQL
+Turno de chat -> métricas em memória -> GET /monitor -> painel de monitoramento
 
-Long-term memory: MongoDB sessions -> summaries -> Qdrant semantic index
-FAQ knowledge: PDF -> one-time ingestion -> Qdrant semantic index
+Memória de longo prazo: sessões MongoDB -> resumos -> índice semântico Qdrant
+Perguntas frequentes: PDF -> ingestão inicial -> índice semântico Qdrant
 ```
 
-MongoDB stores session messages, summaries, calendar events, and conversation metadata. Qdrant provides semantic retrieval for both conversation summaries and FAQ chunks.
-The financial and agenda paths pass through the orchestrator; the FAQ path joins
-at the output guardrail. The evidence judge runs last on responses that reach
-that guardrail. Input requests blocked by the guardrail do not call the judge.
-The MCP server is a separate entry point that reuses the same financial tools
-as the chat graph.
+O MongoDB armazena mensagens e resumos das sessões, compromissos e metadados das conversas. O Qdrant permite busca semântica nos resumos e nos trechos das perguntas frequentes.
+Os fluxos financeiro e de agenda passam pelo orquestrador; o fluxo de perguntas frequentes se conecta à proteção de saída. O juiz de evidências é executado por último nas respostas que chegam a essa proteção. Solicitações bloqueadas pela proteção de entrada não chamam o juiz.
+O servidor MCP é uma entrada separada que reutiliza as mesmas ferramentas financeiras do fluxo de chat.
 
-## Technology Stack
+## Tecnologias
 
 - Python 3.11+
-- FastAPI and Uvicorn
-- LangChain and LangGraph
+- FastAPI e Uvicorn
+- LangChain e LangGraph
 - MCP Python SDK
-- Google Gemini and Groq
-- TypeSafe JEV for response verification
+- Google Gemini e Groq
+- TypeSafe JEV para verificação de respostas
 - PostgreSQL
 - MongoDB
 - Qdrant
 - HTML, CSS, and JavaScript
 
-## Project Structure
+## Estrutura do projeto
 
 ```text
 .
+|-- .github/
+|   |-- pull_request_template.md
+|   `-- workflows/
+|       `-- ci.yml
 |-- .cursor/
 |   `-- mcp.json
 |-- app/
@@ -135,40 +136,40 @@ as the chat graph.
 `-- README.md
 ```
 
-## Getting Started
+## Como começar
 
-### 1. Clone the repository
+### 1. Clone o repositório
 
 ```bash
 git clone https://github.com/giquirino/personal-advisor-api.git
 cd personal-advisor-api
 ```
 
-### 2. Create a virtual environment
+### 2. Crie um ambiente virtual
 
-On Windows PowerShell:
+No Windows PowerShell:
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```
 
-On Linux or macOS:
+No Linux ou macOS:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-### 3. Install the dependencies
+### 3. Instale as dependências
 
 ```bash
 python -m pip install -r requirements.txt
 ```
 
-### 4. Configure the environment
+### 4. Configure o ambiente
 
-Create a `.env` file in the project root:
+Crie um arquivo `.env` na raiz do projeto:
 
 ```env
 GEMINI_API_KEY=your_gemini_api_key
@@ -181,40 +182,39 @@ QDRANT_API_KEY=your_qdrant_api_key
 FAQ_PDF_PATH=data/FAQ_assessor_v1.1.pdf
 ```
 
-Never commit the `.env` file or real credentials.
+Não envie o arquivo `.env` nem credenciais reais ao repositório.
 
-### 5. Run the application
+### 5. Execute o aplicativo
 
 ```bash
 python -m uvicorn app.main:app --reload
 ```
 
-Index the FAQ once before the first FAQ query, or whenever the PDF changes:
+Indexe as perguntas frequentes antes da primeira consulta ou sempre que o PDF mudar:
 
 ```bash
 python -m app.ingest_faq
 ```
 
-Open the following URLs:
+Acesse os seguintes endereços:
 
-- Web interface: `http://localhost:8000`
-- Swagger documentation: `http://localhost:8000/docs`
-- Health check: `http://localhost:8000/health`
-- Monitoring dashboard: `http://localhost:8000/monitor.html`
+- Interface web: `http://localhost:8000`
+- Documentação Swagger: `http://localhost:8000/docs`
+- Verificação de saúde: `http://localhost:8000/health`
+- Painel de monitoramento: `http://localhost:8000/monitor.html`
 
-The monitoring API is available at `GET /monitor`. Metrics cover the current
-server process and reset on restart. Cost uses fixed per-token prices, so it is
-an estimate rather than a provider invoice. Without `TYPESAFE_API_KEY`, the
-evidence check returns a fixed safe response for unverified messages.
+O endpoint de monitoramento está disponível em `GET /monitor`. As métricas cobrem o processo atual do servidor e são reiniciadas quando ele é reiniciado. O custo usa preços fixos por token e, portanto, é uma estimativa. Sem `TYPESAFE_API_KEY`, a verificação de evidências retorna uma resposta segura predefinida para mensagens não verificadas.
 
-To connect an MCP client, configure it to run `python -m app.mcp_server` from
-the project root. The `.cursor/mcp.json` file includes this setup for Cursor.
-The MCP server uses the same `DATABASE_URL` as the API and exposes the existing
-five financial tools; it does not start an HTTP server.
+Para conectar um cliente MCP, configure-o para executar `python -m app.mcp_server` a partir da raiz do projeto. O arquivo `.cursor/mcp.json` já contém essa configuração para o Cursor.
+O servidor MCP usa o mesmo `DATABASE_URL` da API e disponibiliza as cinco ferramentas financeiras existentes. Ele não inicia um servidor HTTP.
 
-## API Endpoints
+## Integração contínua
 
-### Send a message
+O GitHub Actions instala as dependências, compila a aplicação e os testes e executa os testes automatizados em pull requests e em envios para a branch `main`. Novas pull requests usam o modelo `.github/pull_request_template.md`.
+
+## Endpoints da API
+
+### Enviar uma mensagem
 
 ```http
 POST /chat
@@ -224,46 +224,43 @@ Content-Type: application/json
 ```json
 {
   "session_id": "user-session-01",
-  "pergunta": "How much did I spend today?"
+  "pergunta": "Quanto gastei hoje?"
 }
 ```
 
-Example response:
+Exemplo de resposta:
 
 ```json
 {
-  "resposta": "Your current financial summary is...",
+  "resposta": "Seu resumo financeiro atual é...",
   "agentes_chamados": ["roteador", "financeiro", "orquestrador", "juiz:apoiada noul=0.91"]
 }
 ```
 
-### Close and summarize a session
+### Encerrar e resumir uma sessão
 
 ```http
 POST /sessions/{session_id}/encerrar?user_id={user_id}
 ```
 
-Example response:
+Exemplo de resposta:
 
 ```json
 {
   "session_id": "user-session-01",
-  "resumo": "The user reviewed recent expenses and discussed a savings plan."
+  "resumo": "A pessoa revisou as despesas recentes e conversou sobre um plano de economia."
 }
 ```
 
-The `user_id` query parameter must match the user who owns the session. Calling
-this endpoint again for an already closed session returns `null` as the summary
-without raising an error.
+O parâmetro `user_id` deve corresponder à pessoa proprietária da sessão. Se o endpoint for chamado novamente para uma sessão já encerrada, o resumo retornado será `null`, sem gerar erro.
 
-### Check application health
+### Verificar a saúde do aplicativo
 
 ```http
 GET /health
 ```
 
-The endpoint validates both required configuration and connectivity to MongoDB,
-PostgreSQL, and Qdrant. Its response follows this contract:
+O endpoint verifica as configurações necessárias e a conectividade com MongoDB, PostgreSQL e Qdrant. A resposta segue este contrato:
 
 ```json
 {
@@ -271,36 +268,31 @@ PostgreSQL, and Qdrant. Its response follows this contract:
   "checks": {
     "mongodb": {
       "status": "ok | not_configured | unavailable",
-      "message": "Human-readable diagnostic without credentials."
+      "message": "Diagnóstico legível sem credenciais."
     }
   }
 }
 ```
 
-`not_configured` means a required `.env` variable is missing; `unavailable`
-means the value exists but the service could not be reached. API keys are only
-checked for presence, so this endpoint does not spend model API quota.
+`not_configured` indica que falta uma variável obrigatória do `.env`; `unavailable` indica que a variável existe, mas o serviço não pôde ser acessado. As chaves de API são verificadas apenas quanto à presença, sem consumir a cota dos modelos.
 
-## Long-Term Memory
+## Memória de longo prazo
 
-Messages are stored during an active session. When the session is closed, the assistant generates a concise summary and saves it in MongoDB.
+As mensagens são armazenadas durante a sessão. Quando ela é encerrada, o assistente gera um resumo conciso e o salva no MongoDB.
 
-The router, financial agent, and agenda agent can search summaries from previous closed sessions when the current request depends on information the user mentioned earlier. The FAQ agent does not access personal conversation memory.
+O agente roteador e os agentes financeiro e de agenda podem buscar resumos de sessões encerradas quando a solicitação atual depende de informações mencionadas anteriormente. O agente de perguntas frequentes não acessa a memória pessoal das conversas.
 
-Conversation summaries are indexed in Qdrant and retrieved through semantic similarity, allowing related concepts and synonyms to find relevant memories even when the wording differs.
+Os resumos são indexados no Qdrant e recuperados por similaridade semântica. Assim, conceitos relacionados e sinônimos podem localizar memórias relevantes mesmo quando as palavras usadas são diferentes.
 
-## Security Notes
+## Segurança
 
-- User messages are anonymized before the specialist agents run.
-- Responses are checked for sensitive data and financial compliance.
-- The final evidence check sends the question, response, and tool evidence to TypeSafe JEV when configured.
-- Prompt injection and requests for internal credentials are blocked.
-- Database credentials and API keys must remain in `.env`.
-- This project is an educational assistant and does not replace professional financial advice.
+- As mensagens são anonimizadas antes de serem processadas pelos agentes especializados.
+- As respostas são verificadas quanto a dados sensíveis e conformidade financeira.
+- Quando configurada, a verificação final envia a pergunta, a resposta e as evidências das ferramentas ao TypeSafe JEV.
+- Tentativas de injeção de prompt e solicitações de credenciais internas são bloqueadas.
+- Credenciais de banco de dados e chaves de API devem permanecer no `.env`.
+- Este projeto é um assistente educacional e não substitui orientação financeira profissional.
 
-## Development Status
+## Status do desenvolvimento
 
-The project supports the FastAPI chat workflow, persistent sessions, financial
-and calendar tools, FAQ retrieval, long-term memory, an MCP financial server,
-in-process monitoring, and response verification. External services must be
-configured and available for end-to-end operation.
+O projeto oferece o fluxo de chat com FastAPI, sessões persistentes, ferramentas financeiras e de agenda, busca em perguntas frequentes, memória de longo prazo, servidor financeiro MCP, monitoramento no processo e verificação de respostas. Os serviços externos precisam estar configurados e disponíveis para a execução completa.
