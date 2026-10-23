@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "assessor-financeiro": {
+      "command": "python",
+      "args": ["-m", "app.mcp_server"]
+    }
+  }
+}

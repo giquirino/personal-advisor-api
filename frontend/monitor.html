@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>console — monitoramento</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0f14;
+      --panel: #10151c;
+      --panel-alt: #171f29;
+      --border: #232c38;
+      --text: #e4eaf1;
+      --muted: #7c8895;
+      --faint: #4c5866;
+      --accent: #4fd1c5;
+      --accent-soft: rgba(79, 209, 197, 0.12);
+      --ok: #3dd68c;
+      --ok-soft: rgba(61, 214, 140, 0.12);
+      --erro: #f97066;
+      --erro-soft: rgba(249, 112, 102, 0.12);
+      --font-mono: "JetBrains Mono", ui-monospace, monospace;
+      --font-sans: "Inter", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 12% 0%, rgba(79, 209, 197, 0.07), transparent 36%),
+        var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+    }
+    .pagina { max-width: 1120px; margin: 0 auto; padding: 28px 22px 48px; }
+    header {
+      display: flex; align-items: flex-end; justify-content: space-between;
+      gap: 16px; margin-bottom: 22px;
+    }
+    .marca { display: flex; align-items: center; gap: 10px; }
+    .ponto {
+      width: 9px; height: 9px; border-radius: 50%; background: var(--faint); flex-shrink: 0;
+    }
+    .ponto.ok { background: var(--ok); box-shadow: 0 0 0 4px var(--ok-soft); }
+    .ponto.erro { background: var(--erro); box-shadow: 0 0 0 4px var(--erro-soft); }
+    h1 { font-size: 1.15rem; font-weight: 600; margin: 0; letter-spacing: -0.02em; }
+    h1 span { color: var(--accent); }
+    .sub { margin: 4px 0 0; color: var(--muted); font-size: 0.82rem; }
+    .acoes { display: flex; align-items: center; gap: 10px; }
+    a.voltar, button {
+      font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.04em;
+      color: var(--accent); background: var(--accent-soft);
+      border: 1px solid rgba(79, 209, 197, 0.35); border-radius: 999px;
+      padding: 7px 12px; text-decoration: none; cursor: pointer;
+    }
+    button:hover, a.voltar:hover { background: rgba(79, 209, 197, 0.2); }
+    .slo {
+      border: 1px solid var(--border); border-radius: 12px;
+      padding: 14px 16px; margin-bottom: 16px; background: var(--panel);
+      display: flex; justify-content: space-between; gap: 12px; align-items: center;
+    }
+    .slo.ok { border-color: rgba(61, 214, 140, 0.45); background: var(--ok-soft); }
+    .slo.estourou { border-color: rgba(249, 112, 102, 0.5); background: var(--erro-soft); }
+    .slo strong { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
+    .slo p { margin: 4px 0 0; color: var(--muted); font-size: 0.84rem; }
+    .faixa { margin: 18px 0 8px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); }
+    .numeros { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+    .card {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px;
+    }
+    .card .rotulo { color: var(--muted); font-size: 0.72rem; letter-spacing: 0.04em; text-transform: uppercase; }
+    .card .valor { margin-top: 6px; font-family: var(--font-mono); font-size: 1.15rem; font-weight: 500; white-space: nowrap; }
+    .card .valor.pequeno { font-size: 0.82rem; white-space: normal; word-break: break-all; }
+    .card .nota { margin-top: 4px; color: var(--faint); font-size: 0.7rem; }
+    .graficos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+    .grafico { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px 8px; }
+    .grafico h2 { margin: 0 0 8px; font-size: 0.78rem; font-weight: 500; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
+    canvas { width: 100%; height: 180px; display: block; }
+    .tabela-larga { margin-top: 10px; }
+    .bloco { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: auto; }
+    .bloco h2 { margin: 0; padding: 12px 14px 0; font-size: 0.78rem; font-weight: 500; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    th { color: var(--faint); font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 500; }
+    td { color: var(--text); font-variant-numeric: tabular-nums; }
+    td.modelo { font-family: var(--font-mono); font-size: 0.74rem; }
+    .tag { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 999px; padding: 2px 7px; }
+    .tag.ok { color: var(--ok); background: var(--ok-soft); }
+    .tag.erro { color: var(--erro); background: var(--erro-soft); }
+    .tag.bloqueado { color: #f5c16c; background: rgba(245, 193, 108, 0.12); }
+    .aviso { margin-top: 14px; color: var(--erro); font-size: 0.85rem; }
+    .vazio { color: var(--faint); padding: 14px; font-size: 0.82rem; }
+    @media (max-width: 800px) {
+      .graficos { grid-template-columns: 1fr; }
+      header { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="pagina">
+    <header>
+      <div>
+        <div class="marca">
+          <span class="ponto" id="ponto"></span>
+          <h1>assistente <span>/ monitor</span></h1>
+        </div>
+        <p class="sub" id="atualizado">lendo a API…</p>
+      </div>
+      <div class="acoes">
+        <a class="voltar" href="index.html">voltar ao chat</a>
+        <button type="button" id="atualizar">atualizar</button>
+      </div>
+    </header>
+
+    <section class="slo" id="slo">
+      <div>
+        <strong id="slo-titulo">SLO</strong>
+        <p id="slo-texto">p95 de latência e taxa de erro desta execução.</p>
+      </div>
+    </section>
+
+    <p class="faixa">serviço</p>
+    <section class="numeros" id="numeros-sre"></section>
+
+    <p class="faixa">modelo</p>
+    <section class="numeros" id="numeros-ia"></section>
+
+    <section class="graficos">
+      <article class="grafico">
+        <h2>latência por turno</h2>
+        <canvas id="grafico-latencia"></canvas>
+      </article>
+      <article class="grafico">
+        <h2>custo acumulado</h2>
+        <canvas id="grafico-custo"></canvas>
+      </article>
+    </section>
+
+    <article class="bloco tabela-larga">
+      <h2>turnos</h2>
+      <div id="tabela-turnos"></div>
+    </article>
+
+    <article class="bloco tabela-larga">
+      <h2>por modelo</h2>
+      <div id="tabela-modelo"></div>
+    </article>
+    <article class="bloco tabela-larga">
+      <h2>por rota</h2>
+      <div id="tabela-rota"></div>
+    </article>
+
+    <p class="aviso" id="aviso" hidden></p>
+  </div>
+
+  <script>
+    const numerosSre = document.getElementById("numeros-sre");
+    const numerosIa = document.getElementById("numeros-ia");
+    const aviso = document.getElementById("aviso");
+    const ponto = document.getElementById("ponto");
+    const atualizado = document.getElementById("atualizado");
+
+    function ms(valor) {
+      if (valor >= 1000) {
+        return (valor / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + " s";
+      }
+      return Math.round(valor).toLocaleString("pt-BR") + " ms";
+    }
+
+    function usd(valor) {
+      return valor.toLocaleString("pt-BR", { style: "currency", currency: "USD", minimumFractionDigits: 4, maximumFractionDigits: 6 });
+    }
+
+    function inteiro(valor) {
+      return Number(valor || 0).toLocaleString("pt-BR");
+    }
+
+    function pct(valor) {
+      return (valor * 100).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%";
+    }
+
+    function duracao(segundos) {
+      const minutos = Math.floor(segundos / 60);
+      const resto = segundos % 60;
+      if (minutos <= 0) return resto + "s";
+      return minutos + "min " + resto + "s";
+    }
+
+    function escapeHtml(valor) {
+      return String(valor).replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      })[char]);
+    }
+
+    function card(rotulo, valor, nota, pequeno) {
+      return `<article class="card"><div class="rotulo">${rotulo}</div><div class="valor${pequeno ? " pequeno" : ""}">${valor}</div>${nota ? `<div class="nota">${nota}</div>` : ""}</article>`;
+    }
+
+    function tabela(colunas, linhas, vazio) {
+      if (!linhas.length) return `<p class="vazio">${vazio}</p>`;
+      const cabeca = colunas.map((c) => `<th>${c}</th>`).join("");
+      const corpo = linhas.map((linha) => `<tr>${linha.map((celula) => `<td class="${celula.classe || ""}">${celula.html ? celula.texto : escapeHtml(celula.texto)}</td>`).join("")}</tr>`).join("");
+      return `<table><thead><tr>${cabeca}</tr></thead><tbody>${corpo}</tbody></table>`;
+    }
+
+    function tagStatus(status) {
+      return `<span class="tag ${status}">${status}</span>`;
+    }
+
+    function desenharLinha(canvas, pontos, cor, limite) {
+      const ctx = canvas.getContext("2d");
+      const dpr = window.devicePixelRatio || 1;
+      const largura = canvas.clientWidth || 320;
+      const altura = canvas.clientHeight || 180;
+      canvas.width = Math.floor(largura * dpr);
+      canvas.height = Math.floor(altura * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, largura, altura);
+
+      if (!pontos.length) {
+        ctx.fillStyle = "#4c5866";
+        ctx.font = "13px Inter, sans-serif";
+        ctx.fillText("sem turnos ainda", 12, altura / 2);
+        return;
+      }
+
+      const valores = pontos.map((p) => p.valor);
+      let min = Math.min(...valores, 0);
+      let max = Math.max(...valores);
+      if (limite != null) max = Math.max(max, limite);
+      const folga = Math.max((max - min) * 0.08, max * 0.05);
+      max = max + folga;
+      if (max === min) max = min + 1;
+      const span = max - min || 1;
+      const pad = { l: 48, r: 12, t: 14, b: 26 };
+      const xDe = (i) => pad.l + (pontos.length === 1 ? (largura - pad.l - pad.r) / 2 : (i / (pontos.length - 1)) * (largura - pad.l - pad.r));
+      const yDe = (v) => pad.t + (1 - (v - min) / span) * (altura - pad.t - pad.b);
+
+      ctx.strokeStyle = "#232c38";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(pad.l, pad.t);
+      ctx.lineTo(pad.l, altura - pad.b);
+      ctx.lineTo(largura - pad.r, altura - pad.b);
+      ctx.stroke();
+
+      ctx.fillStyle = "#4c5866";
+      ctx.font = "10px JetBrains Mono, monospace";
+      ctx.fillText(String(Math.round(max)), 4, pad.t + 4);
+      ctx.fillText(String(Math.round(min)), 4, altura - pad.b);
+
+      if (limite != null) {
+        const y = yDe(limite);
+        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = "rgba(249, 112, 102, 0.8)";
+        ctx.beginPath();
+        ctx.moveTo(pad.l, y);
+        ctx.lineTo(largura - pad.r, y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      ctx.beginPath();
+      pontos.forEach((pontoAtual, i) => {
+        const x = xDe(i);
+        const y = yDe(pontoAtual.valor);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = cor;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.fillStyle = cor;
+      pontos.forEach((pontoAtual, i) => {
+        ctx.beginPath();
+        ctx.arc(xDe(i), yDe(pontoAtual.valor), 3, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    function render(dados) {
+      const r = dados.resumo;
+      const slo = dados.slo;
+      const caixa = document.getElementById("slo");
+      caixa.classList.remove("ok", "estourou");
+      if (!r.turnos) {
+        document.getElementById("slo-titulo").textContent = "sem turnos";
+        document.getElementById("slo-texto").textContent = "Mande uma mensagem no chat. O registro vive na memória deste processo.";
+      } else if (r.slo_ok) {
+        caixa.classList.add("ok");
+        document.getElementById("slo-titulo").textContent = "dentro do SLO";
+        document.getElementById("slo-texto").textContent = `p95 até ${ms(slo.latencia_p95_limite_ms)} e erro até ${pct(slo.taxa_erro_limite)}.`;
+      } else {
+        caixa.classList.add("estourou");
+        document.getElementById("slo-titulo").textContent = "SLO estourou";
+        document.getElementById("slo-texto").textContent = `p95 até ${ms(slo.latencia_p95_limite_ms)} e erro até ${pct(slo.taxa_erro_limite)}.`;
+      }
+
+      numerosSre.innerHTML = [
+        card("turnos", inteiro(r.turnos)),
+        card("taxa de erro", pct(r.taxa_erro), "exceção no turno"),
+        card("latência média", ms(r.latencia_media_ms)),
+        card("latência p95", ms(r.latencia_p95_ms)),
+        card("no ar", duracao(r.no_ar_segundos)),
+        card("em andamento", inteiro(r.em_andamento)),
+        card("bloqueios", inteiro(r.bloqueios), "guardrail de entrada"),
+      ].join("");
+
+      numerosIa.innerHTML = [
+        card("tokens", inteiro(r.tokens_total), `${inteiro(r.tokens_entrada)} entrada · ${inteiro(r.tokens_saida)} saída`),
+        card("custo", usd(r.custo_usd), "tabela fixa, não é a fatura"),
+        card("modelo mais usado", escapeHtml(r.modelo_mais_usado), "", true),
+        card("fallbacks", inteiro(r.fallbacks), "especialista saiu do Gemini"),
+      ].join("");
+
+      desenharLinha(
+        document.getElementById("grafico-latencia"),
+        dados.serie_latencia.map((p) => ({ valor: p.latencia_ms })),
+        "#4fd1c5",
+        slo.latencia_p95_limite_ms,
+      );
+      desenharLinha(
+        document.getElementById("grafico-custo"),
+        dados.serie_custo.map((p) => ({ valor: p.custo_acumulado_usd })),
+        "#7ee8dd",
+        null,
+      );
+
+      document.getElementById("tabela-turnos").innerHTML = tabela(
+        ["hora", "latência", "rota", "status", "tokens", "custo"],
+        dados.turnos.map((t) => [
+          { texto: t.hora },
+          { texto: ms(t.latencia_ms) },
+          { texto: t.rota },
+          { texto: tagStatus(t.status), html: true },
+          { texto: inteiro(t.tokens_total) },
+          { texto: usd(t.custo_usd) },
+        ]),
+        "Nenhum turno neste processo.",
+      );
+
+      document.getElementById("tabela-modelo").innerHTML = tabela(
+        ["modelo", "chamadas", "entrada", "saída", "custo", "latência"],
+        dados.por_modelo.map((m) => [
+          { texto: m.modelo, classe: "modelo" },
+          { texto: inteiro(m.chamadas) },
+          { texto: inteiro(m.tokens_entrada) },
+          { texto: inteiro(m.tokens_saida) },
+          { texto: usd(m.custo_usd) },
+          { texto: ms(m.latencia_media_ms) },
+        ]),
+        "Nenhuma chamada de modelo.",
+      );
+
+      document.getElementById("tabela-rota").innerHTML = tabela(
+        ["rota", "turnos", "erros", "latência", "custo"],
+        dados.por_rota.map((rota) => [
+          { texto: rota.rota },
+          { texto: inteiro(rota.turnos) },
+          { texto: inteiro(rota.erros) },
+          { texto: ms(rota.latencia_media_ms) },
+          { texto: usd(rota.custo_usd) },
+        ]),
+        "Nenhuma rota ainda.",
+      );
+    }
+
+    async function carregar() {
+      try {
+        const resposta = await fetch("/monitor");
+        if (!resposta.ok) throw new Error("HTTP " + resposta.status);
+        const dados = await resposta.json();
+        aviso.hidden = true;
+        ponto.className = "ponto ok";
+        atualizado.textContent = "atualizado " + new Date().toLocaleTimeString("pt-BR") + " · a cada 4 s";
+        render(dados);
+      } catch (erro) {
+        ponto.className = "ponto erro";
+        aviso.hidden = false;
+        aviso.textContent = "Não consegui ler /monitor. A API está no ar? " + erro.message;
+      }
+    }
+
+    document.getElementById("atualizar").addEventListener("click", carregar);
+    carregar();
+    setInterval(carregar, 4000);
+    window.addEventListener("resize", carregar);
+  </script>
+</body>
+</html>

@@ -5,17 +5,20 @@ import operator
 from typing import Annotated
 
 from langchain.agents import create_agent
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langgraph.graph import END, MessagesState, StateGraph
 
 from app.guardrail import anonimizar_entrada, guardrail_entrada, guardrail_saida
+from app.juiz import no_juiz
 from app.llms import llm, llm_rapido
 from app.memory import salvar_mensagens
+from app.observabilidade import abrir_turno, coletor, fechar_turno, status_do_estado
 from app.prompts import (
     AGENDA_PROMPT_COMPLETO,
     FAQ_PROMPT_COMPLETO,
     FINANCEIRO_PROMPT_COMPLETO,
     ROUTER_PROMPT_COMPLETO,
+    contexto_temporal,
 )
 from app.tools.financeiro import TOOLS
 from app.tools.agenda import TOOLS_AGENDA
@@ -51,6 +54,10 @@ class Estado(MessagesState):
 def _texto_mensagem(mensagem: object) -> str:
     conteudo = getattr(mensagem, "content", mensagem)
     return conteudo if isinstance(conteudo, str) else str(conteudo)
+
+
+def _mensagens_do_agente(estado: Estado) -> list:
+    return [SystemMessage(content=contexto_temporal()), *estado["messages"]]
 
 
 def _extrair_json_do_especialista(texto: str) -> dict | None:
@@ -93,7 +100,8 @@ def _formatar_resposta_especialista(texto: str) -> str:
 
 
 def no_guardrail_entrada(estado: Estado) -> dict:
-    texto, mapa_pii = anonimizar_entrada(_texto_mensagem(estado["messages"][-1]))
+    mensagem = estado["messages"][-1]
+    texto, mapa_pii = anonimizar_entrada(_texto_mensagem(mensagem))
     resultado = guardrail_entrada(texto)
     if resultado["bloqueado"]:
         return {
@@ -101,7 +109,11 @@ def no_guardrail_entrada(estado: Estado) -> dict:
             "mapa_pii": mapa_pii,
             "messages": [AIMessage(content=resultado["mensagem"])],
         }
-    return {"bloqueado": False, "mapa_pii": mapa_pii}
+    return {
+        "bloqueado": False,
+        "mapa_pii": mapa_pii,
+        "messages": [HumanMessage(content=texto, id=mensagem.id)],
+    }
 
 
 def decidir_pos_guardrail_entrada(estado: Estado) -> str:
@@ -109,7 +121,7 @@ def decidir_pos_guardrail_entrada(estado: Estado) -> str:
 
 
 def no_roteador(estado: Estado, config) -> dict:
-    saida = router_agent.invoke({"messages": list(estado["messages"])}, config=config)
+    saida = router_agent.invoke({"messages": _mensagens_do_agente(estado)}, config=config)
     texto = _texto_mensagem(saida["messages"][-1])
     if not texto.strip().startswith("ROUTE="):
         return {"agentes_chamados": ["roteador"], "rota": "fim", "messages": [AIMessage(content=texto)]}
@@ -122,18 +134,24 @@ def no_roteador(estado: Estado, config) -> dict:
 
 
 def no_financeiro(estado: Estado, config) -> dict:
-    saida = financeiro_agent.invoke({"messages": list(estado["messages"])}, config=config)
-    return {"agentes_chamados": ["financeiro"], "messages": [saida["messages"][-1]]}
+    mensagens = _mensagens_do_agente(estado)
+    saida = financeiro_agent.invoke({"messages": mensagens}, config=config)
+    novas = saida["messages"][len(mensagens):] or [saida["messages"][-1]]
+    return {"agentes_chamados": ["financeiro"], "messages": novas}
 
 
 def no_agenda(estado: Estado, config) -> dict:
-    saida = agenda_agent.invoke({"messages": list(estado["messages"])}, config=config)
-    return {"agentes_chamados": ["agenda"], "messages": [saida["messages"][-1]]}
+    mensagens = _mensagens_do_agente(estado)
+    saida = agenda_agent.invoke({"messages": mensagens}, config=config)
+    novas = saida["messages"][len(mensagens):] or [saida["messages"][-1]]
+    return {"agentes_chamados": ["agenda"], "messages": novas}
 
 
 def no_faq(estado: Estado, config) -> dict:
-    saida = faq_agent.invoke({"messages": list(estado["messages"])}, config=config)
-    return {"agentes_chamados": ["faq"], "messages": [saida["messages"][-1]]}
+    mensagens = _mensagens_do_agente(estado)
+    saida = faq_agent.invoke({"messages": mensagens}, config=config)
+    novas = saida["messages"][len(mensagens):] or [saida["messages"][-1]]
+    return {"agentes_chamados": ["faq"], "messages": novas}
 
 
 def no_orquestrador(estado: Estado) -> dict:
@@ -166,6 +184,7 @@ grafo.add_node("agenda", no_agenda)
 grafo.add_node("faq", no_faq)
 grafo.add_node("orquestrador", no_orquestrador)
 grafo.add_node("guardrail_saida", no_guardrail_saida)
+grafo.add_node("juiz", no_juiz)
 grafo.set_entry_point("guardrail_entrada")
 grafo.add_conditional_edges("guardrail_entrada", decidir_pos_guardrail_entrada, {"roteador": "roteador", "fim": END})
 grafo.add_conditional_edges("roteador", decidir_especialista, {"financeiro": "financeiro", "agenda": "agenda", "faq": "faq", "fim": END})
@@ -173,7 +192,8 @@ grafo.add_edge("financeiro", "orquestrador")
 grafo.add_edge("agenda", "orquestrador")
 grafo.add_edge("faq", "guardrail_saida")
 grafo.add_edge("orquestrador", "guardrail_saida")
-grafo.add_edge("guardrail_saida", END)
+grafo.add_edge("guardrail_saida", "juiz")
+grafo.add_edge("juiz", END)
 
 # O histórico das sessões já é persistido no MongoDB. Manter checkpoints de
 # execução aqui fazia cada nova mensagem reenviar todas as mensagens internas
@@ -186,25 +206,35 @@ def executar_fluxo_assessor(
     session_id: str,
     user_id: str = "usuario_teste",
 ) -> tuple[str, list[str]]:
-    estado_final = fluxo_agentes.invoke(
-        {
-            "messages": [{"role": "user", "content": pergunta_usuario}],
-            "agentes_chamados": [],
-            "rota": "",
-            "mapa_pii": {},
-            "bloqueado": False,
-        },
-        config={"configurable": {"user_id": user_id}},
-    )
-    resposta_final = _texto_mensagem(estado_final["messages"][-1])
-
-    salvar_mensagens(
-        session_id,
-        [
-            {"role": "usuario", "content": pergunta_usuario},
-            {"role": "assistente", "content": resposta_final},
-        ],
-        user_id=user_id,
-    )
-
-    return resposta_final, estado_final.get("agentes_chamados", [])
+    turno_id = abrir_turno()
+    status = "erro"
+    rota = ""
+    try:
+        estado_final = fluxo_agentes.invoke(
+            {
+                "messages": [{"role": "user", "content": pergunta_usuario}],
+                "agentes_chamados": [],
+                "rota": "",
+                "mapa_pii": {},
+                "bloqueado": False,
+            },
+            config={
+                "configurable": {"user_id": user_id},
+                "metadata": {"turno_id": turno_id},
+                "callbacks": [coletor],
+            },
+        )
+        resposta_final = _texto_mensagem(estado_final["messages"][-1])
+        salvar_mensagens(
+            session_id,
+            [
+                {"role": "usuario", "content": pergunta_usuario},
+                {"role": "assistente", "content": resposta_final},
+            ],
+            user_id=user_id,
+        )
+        status = status_do_estado(estado_final)
+        rota = estado_final.get("rota", "")
+        return resposta_final, estado_final.get("agentes_chamados", [])
+    finally:
+        fechar_turno(turno_id, rota, status)

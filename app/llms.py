@@ -1,7 +1,6 @@
-"""Instâncias de LLM compartilhadas pela aplicação."""
+"""InstÃƒÆ’Ã‚Â¢ncias de LLM compartilhadas pela aplicaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o."""
 
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_groq import ChatGroq
 
 from app.config import GEMINI_API_KEY, GROQ_API_KEY
@@ -27,8 +26,3 @@ llm_rapido = ChatGroq(
 )
 
 llm = llm_gemini.with_fallbacks([llm_groq])
-
-faq_embeddings = GoogleGenerativeAIEmbeddings(
-    model="gemini-embedding-2-preview",
-    google_api_key=GEMINI_API_KEY,
-)
