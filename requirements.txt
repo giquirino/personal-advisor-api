@@ -4,6 +4,7 @@ python-dotenv
 pydantic
 pymongo
 psycopg2-binary
+tzdata
 langchain
 langchain-community
 langchain-google-genai

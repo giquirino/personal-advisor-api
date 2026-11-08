@@ -132,6 +132,7 @@ O servidor MCP é uma entrada separada que reutiliza as mesmas ferramentas finan
 |-- tests/
 |   `-- test_integrations.py
 |-- .env.example
+|-- render.yaml
 |-- requirements.txt
 `-- README.md
 ```
@@ -208,9 +209,13 @@ O endpoint de monitoramento está disponível em `GET /monitor`. As métricas co
 Para conectar um cliente MCP, configure-o para executar `python -m app.mcp_server` a partir da raiz do projeto. O arquivo `.cursor/mcp.json` já contém essa configuração para o Cursor.
 O servidor MCP usa o mesmo `DATABASE_URL` da API e disponibiliza as cinco ferramentas financeiras existentes. Ele não inicia um servidor HTTP.
 
-## ⚙️ Integração contínua
+## ⚙️ Integração contínua e deploy
 
-O GitHub Actions instala as dependências, compila a aplicação e os testes e executa os testes automatizados em pull requests e em envios para a branch `main`. Novas pull requests usam o modelo `.github/pull_request_template.md`.
+O GitHub Actions instala as dependências, compila a aplicação e os testes e executa os testes automatizados em pull requests para `main` e em envios para essa branch. O Render está configurado para iniciar o deploy somente depois que todas as verificações de CI do commit passarem.
+
+O arquivo `render.yaml` configura o serviço FastAPI no Render. Informe no painel do serviço as variáveis de ambiente exigidas pelo projeto; o Blueprint marca esses valores com `sync: false` para que segredos não sejam gravados no repositório. O deploy automático usa a opção **After CI Checks Pass** do Render.
+
+O plano gratuito do Render suspende o serviço após 15 minutos sem tráfego e usa sistema de arquivos temporário. Ele é adequado para demonstração acadêmica, mas não para produção.
 
 ## 🔌 Endpoints da API
 
